@@ -26,8 +26,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.switchyard.*;
 import org.switchyard.cdi.AbstractCDITest;
-import org.switchyard.cdi.omservice.OrderRequest;
-import org.switchyard.cdi.omservice.OrderResponse;
+import org.switchyard.cdi.omservice.service.OrderRequest;
+import org.switchyard.cdi.omservice.service.OrderResponse;
 import org.switchyard.internal.ServiceDomains;
 
 import javax.xml.namespace.QName;
@@ -48,12 +48,12 @@ public class OMInOutTest extends AbstractCDITest {
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         inMessage.setContent(new OrderRequest("D123"));
 
-        exchange.sendIn(inMessage);
+        exchange.send(inMessage);
 
         // wait, since this is async
-        responseConsumer.waitForOut();
+        responseConsumer.waitForMessage();
 
-        OrderResponse response = (OrderResponse) responseConsumer.outEvents.get(0).getMessage().getContent();
+        OrderResponse response = (OrderResponse) responseConsumer._messages.poll().getMessage().getContent();
         Assert.assertEquals("D123", response.orderId);
     }
 }

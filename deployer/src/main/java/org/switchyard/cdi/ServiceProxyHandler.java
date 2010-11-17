@@ -38,7 +38,15 @@ public class ServiceProxyHandler implements ExchangeHandler {
         this.serviceBean = serviceBean;
     }
 
-    public void handle(Exchange exchange) throws HandlerException {
+    public void handleMessage(Exchange exchange) throws HandlerException {
+        handle(exchange);
+    }
+
+    public void handleFault(Exchange exchange) {
+        handle(exchange);
+    }
+
+    private void handle(Exchange exchange) {
 
         // TODO: Could obviously build more invocation options here... simple single param for now...
 
@@ -54,7 +62,7 @@ public class ServiceProxyHandler implements ExchangeHandler {
                         Message message = MessageBuilder.newInstance().buildMessage();
 
                         message.setContent(outMessagePayload);
-                        exchange.sendOut(message);
+                        exchange.send(message);
                     } else {
                         method.invoke(serviceBean, param);
                     }
