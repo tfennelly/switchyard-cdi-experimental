@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.omservice.service;
+package org.switchyard.cdi.omservice.model;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -28,8 +28,10 @@ package org.switchyard.cdi.omservice.service;
 public class OrderRequest {
 
     public String orderId;
+    public String productId;
 
-    public OrderRequest(String orderId) {
+    public OrderRequest(String orderId, String productId) {
         this.orderId = orderId;
+        this.productId = productId;
     }
 }

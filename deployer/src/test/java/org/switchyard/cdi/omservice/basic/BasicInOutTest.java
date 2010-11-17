@@ -20,14 +20,14 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.omservice;
+package org.switchyard.cdi.omservice.basic;
 
 import org.junit.Assert;
 import org.junit.Test;
 import org.switchyard.*;
 import org.switchyard.cdi.AbstractCDITest;
-import org.switchyard.cdi.omservice.service.OrderRequest;
-import org.switchyard.cdi.omservice.service.OrderResponse;
+import org.switchyard.cdi.omservice.model.OrderRequest;
+import org.switchyard.cdi.omservice.model.OrderResponse;
 import org.switchyard.internal.ServiceDomains;
 
 import javax.xml.namespace.QName;
@@ -35,18 +35,18 @@ import javax.xml.namespace.QName;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public class OMInOutTest extends AbstractCDITest {
+public class BasicInOutTest extends AbstractCDITest {
 
     @Test
     public void test() {
         ServiceDomain domain = ServiceDomains.getDomain();
 
-        // Consume the OM service...
+        // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
-        Exchange exchange = domain.createExchange(new QName("OrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
+        Exchange exchange = domain.createExchange(new QName("BasicOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
 
         Message inMessage = MessageBuilder.newInstance().buildMessage();
-        inMessage.setContent(new OrderRequest("D123"));
+        inMessage.setContent(new OrderRequest("D123", "ABCD"));
 
         exchange.send(inMessage);
 
