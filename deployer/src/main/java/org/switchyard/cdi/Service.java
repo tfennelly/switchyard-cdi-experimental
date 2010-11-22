@@ -33,7 +33,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Qualifier
 @Target({ TYPE })
 @Retention(RUNTIME)
 @Documented

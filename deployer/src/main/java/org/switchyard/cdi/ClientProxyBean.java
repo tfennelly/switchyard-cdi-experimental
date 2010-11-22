@@ -74,7 +74,7 @@ public class ClientProxyBean implements Bean {
 
     public String getName() {
         // TODO: Can we take this from the Bean instance associated with the actual service... think that may cause a duplicate bean name bean resolution issue
-        return "";
+        return null;
     }
 
     public Set<Class<? extends Annotation>> getStereotypes() {
