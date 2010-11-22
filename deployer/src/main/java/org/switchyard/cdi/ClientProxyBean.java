@@ -1,0 +1,146 @@
+/*
+ * JBoss, Home of Professional Open Source.
+ * Copyright 2010, Red Hat, Inc., and individual contributors
+ * as indicated by the @author tags. See the copyright.txt file in the
+ * distribution for a full listing of individual contributors.
+ *
+ * This is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as
+ * published by the Free Software Foundation; either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this software; if not, write to the Free
+ * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+ * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
+ */
+
+package org.switchyard.cdi;
+
+import org.switchyard.*;
+import org.switchyard.internal.ServiceDomains;
+
+import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.spi.CreationalContext;
+import javax.enterprise.inject.Any;
+import javax.enterprise.inject.Default;
+import javax.enterprise.inject.spi.Bean;
+import javax.enterprise.inject.spi.InjectionPoint;
+import javax.enterprise.inject.spi.InjectionTarget;
+import javax.enterprise.util.AnnotationLiteral;
+import javax.xml.namespace.QName;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
+ */
+public class ClientProxyBean implements Bean {
+
+    private QName serviceQName;
+    private Class<?> beanClass;
+    private InjectionTarget injectionTarget;
+
+    public ClientProxyBean(QName serviceQName, Class<?> beanClass, InjectionTarget injectionTarget) {
+        this.serviceQName = serviceQName;
+        this.beanClass = beanClass;
+        this.injectionTarget = injectionTarget;
+    }
+
+    public Set<Type> getTypes() {
+        Set<Type> types = new HashSet<Type>();
+        types.add(beanClass);
+        types.add(Object.class);
+        return types;
+    }
+
+    public Set<Annotation> getQualifiers() {
+        Set<Annotation> qualifiers = new HashSet<Annotation>();
+        qualifiers.add(new AnnotationLiteral<Default>() {});
+        qualifiers.add(new AnnotationLiteral<Any>() {});
+        return qualifiers;
+    }
+
+    public String getName() {
+        // TODO: Can we take this from the Bean instance associated with the actual service... think that may cause a duplicate bean name bean resolution issue
+        return "";
+    }
+
+    public Set<Class<? extends Annotation>> getStereotypes() {
+        return Collections.emptySet();
+    }
+
+    public Class<?> getBeanClass() {
+        return beanClass;
+    }
+
+    public boolean isAlternative() {
+        return false;
+    }
+
+    public boolean isNullable() {
+        return false;
+    }
+
+    public Set<InjectionPoint> getInjectionPoints() {
+        return injectionTarget.getInjectionPoints();
+    }
+
+    public Class<? extends Annotation> getScope() {
+        return ApplicationScoped.class;
+    }
+
+    public Object create(CreationalContext creationalContext) {
+        return Proxy.newProxyInstance(ClientProxyBean.class.getClassLoader(),
+                                          new Class[] { beanClass },
+                                          new ClientProxyInvocationHandler());
+    }
+
+    public void destroy(Object instance, CreationalContext creationalContext) {
+      
+    }
+
+    private class ClientProxyInvocationHandler implements InvocationHandler {
+
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            ServiceDomain domain = ServiceDomains.getDomain();
+
+            if(method.getReturnType() != null && method.getReturnType() != Void.class) {
+                // TODO: Modify to support IN_OUT exchange (async request/response)...
+                Exchange exchange = domain.createExchange(serviceQName, ExchangePattern.IN_ONLY, null);
+
+                Message sendMessage = prepareSend(exchange, args, method);
+                exchange.send(sendMessage);
+
+                return null;
+            } else {
+                Exchange exchange = domain.createExchange(serviceQName, ExchangePattern.IN_ONLY, null);
+
+                Message sendMessage = prepareSend(exchange, args, method);
+                exchange.send(sendMessage);
+
+                return null;
+            }
+        }
+
+        private Message prepareSend(Exchange exchange, Object[] args, Method method) {
+            ServiceProxyHandler.setOperationName(exchange, method.getName());
+            Message inMessage = MessageBuilder.newInstance().buildMessage();
+            inMessage.setContent(args);
+
+            return inMessage;
+        }
+
+    }
+}

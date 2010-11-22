@@ -20,23 +20,17 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi;
+package org.switchyard.cdi.omservice.basic;
 
-import javax.inject.Qualifier;
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import org.switchyard.cdi.Service;
+import org.switchyard.cdi.omservice.model.OrderRequest;
+import org.switchyard.cdi.omservice.model.OrderResponse;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Qualifier
-@Target({ TYPE })
-@Retention(RUNTIME)
-@Documented
-public @interface Service {
-    String value() default "";
+@Service
+public interface OrderManagementService {
+    
+    OrderResponse createOrder(OrderRequest request);
 }

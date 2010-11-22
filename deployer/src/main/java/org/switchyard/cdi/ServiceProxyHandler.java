@@ -26,16 +26,24 @@ import org.switchyard.*;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
 public class ServiceProxyHandler implements ExchangeHandler {
-    
+
+    private static final String OPERATION_NAME = "OPERATION_NAME";
+
     private Object serviceBean;
+    private Class<? extends Object> serviceClass;
+    private Method[] serviceMethods;
 
     public ServiceProxyHandler(Object serviceBean) {
         this.serviceBean = serviceBean;
+        serviceClass = serviceBean.getClass();
+        serviceMethods = serviceClass.getMethods();
     }
 
     public void handleMessage(Exchange exchange) throws HandlerException {
@@ -46,56 +54,118 @@ public class ServiceProxyHandler implements ExchangeHandler {
         handle(exchange);
     }
 
+    public static void setOperationName(Exchange exchange, String name) {
+        exchange.getContext(Scope.MESSAGE).setProperty(OPERATION_NAME, name);
+    }
+
+    private String getOperationName(Exchange exchange) {
+        return (String) exchange.getContext(Scope.MESSAGE).getProperty(OPERATION_NAME);
+    }
+
     private void handle(Exchange exchange) {
+        Invocation invocation = getInvocation(exchange);
 
-        // TODO: Could obviously build more invocation options here... simple single param for now...
+        if(invocation != null) {
+            try {
+                if(exchange.getPattern() == ExchangePattern.IN_OUT) {
+                    Object outMessagePayload = invocation.method.invoke(serviceBean, invocation.args);
+                    Message message = MessageBuilder.newInstance().buildMessage();
 
-        Object param = exchange.getMessage().getContent();
-
-        if(param != null) {
-            Method method = getMethodForParamType(param.getClass());
-
-            if(method != null) {
-                try {
-                    if(exchange.getPattern() == ExchangePattern.IN_OUT) {
-                        Object outMessagePayload = method.invoke(serviceBean, param);
-                        Message message = MessageBuilder.newInstance().buildMessage();
-
-                        message.setContent(outMessagePayload);
-                        exchange.send(message);
-                    } else {
-                        method.invoke(serviceBean, param);
-                    }
-                } catch (IllegalAccessException e) {
-                    // Fixme
-                    e.printStackTrace();
-                    // sendFault...
-                } catch (InvocationTargetException e) {
-                    // Fixme
-                    e.printStackTrace();
-                    // sendFault...
+                    message.setContent(outMessagePayload);
+                    exchange.send(message);
+                } else {
+                    invocation.method.invoke(serviceBean, invocation.args);
                 }
-            } else {
-                // sendFault...
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+                // TODO: sendFault...
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+                // TODO: sendFault...
             }
         } else {
-            // sendFault...
+            // TODO: sendFault...
         }
     }
 
-    private Method getMethodForParamType(Class<? extends Object> paramType) {
-        Method[] methods = serviceBean.getClass().getMethods();
+    private Invocation getInvocation(Exchange exchange) {
 
-        for(Method method : methods) {
-            Class<?>[] methodParams = method.getParameterTypes();
+        Object[] args = getArgs(exchange);
 
-            if(methodParams.length == 1) {
-                if(methodParams[0].isAssignableFrom(paramType)) {
-                    return method;
+        if(args != null) {
+            String operationName = getOperationName(exchange);
+            List<Method> candidateMethods = getCandidateMethods(args);
+
+            // TODO: CDI may have a funky way of resolving the target method, that I missed in the spec...
+            if(operationName != null) {
+                for(Method candidateMethod : candidateMethods) {
+                    if(candidateMethod.getName().equals(operationName)) {
+                        return new Invocation(candidateMethod, args);
+                    }
                 }
+            } else if(!candidateMethods.isEmpty()) {
+                // TODO: What if there are multiple impls?
+                return new Invocation(candidateMethods.get(0), args);
             }
         }
 
         return null;
     }
+
+    private Object[] getArgs(Exchange exchange) {
+        Object paramPayload = exchange.getMessage().getContent();
+
+        if(paramPayload != null) {
+            if(paramPayload.getClass().isArray()) {
+                return (Object[]) paramPayload;
+            } else {
+                return new Object[] {paramPayload};
+            }
+        }
+
+        return null;
+    }
+
+    private List<Method> getCandidateMethods(Object[] args) {
+        List<Method> candidateMethods = new ArrayList<Method>();
+
+        for(Method serviceMethod : serviceMethods) {
+            if(serviceMethod.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            Class<?>[] serviceMethodArgTypes = serviceMethod.getParameterTypes();
+
+            if(serviceMethodArgTypes.length == args.length) {
+                for(int i = 0; i < args.length; i++) {
+                    Object arg = args[i];
+
+                    if(arg == null) {
+                        if(serviceMethodArgTypes[i].isPrimitive()) {
+                            // Null is matchable s long as it's not a primitive...
+                            continue;
+                        }
+                    } else if(arg.getClass() != serviceMethodArgTypes[i]) {
+                        // must be an exact type match
+                        continue;
+                    }
+
+                    candidateMethods.add(serviceMethod);
+                }
+            }
+        }
+        
+        return candidateMethods;
+    }
+
+    private class Invocation {
+        private Method method;
+        private Object[] args;
+
+        private Invocation(Method method, Object[] args) {
+            this.method = method;
+            this.args = args;
+        }
+    }
+
 }

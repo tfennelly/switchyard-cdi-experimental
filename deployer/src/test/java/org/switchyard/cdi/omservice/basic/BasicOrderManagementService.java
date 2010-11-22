@@ -29,8 +29,7 @@ import org.switchyard.cdi.omservice.model.OrderResponse;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Service
-public class BasicOrderManagementService {
+public class BasicOrderManagementService implements OrderManagementService {
 
     public OrderResponse createOrder(OrderRequest request) {
 
