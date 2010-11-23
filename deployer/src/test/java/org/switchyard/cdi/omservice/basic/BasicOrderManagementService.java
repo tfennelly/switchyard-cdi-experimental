@@ -22,14 +22,14 @@
 
 package org.switchyard.cdi.omservice.basic;
 
-import org.switchyard.cdi.Service;
+import org.switchyard.cdi.ESBService;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Service
+@ESBService
 public class BasicOrderManagementService {
 
     public OrderResponse createOrder(OrderRequest request) {

@@ -22,10 +22,9 @@
 
 package org.switchyard.cdi.omservice.with_products;
 
-import org.switchyard.cdi.Service;
+import org.switchyard.cdi.ESBService;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
-import org.switchyard.cdi.prodservice.Product;
 import org.switchyard.cdi.prodservice.ProductService;
 
 import javax.inject.Inject;
@@ -33,7 +32,7 @@ import javax.inject.Inject;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Service
+@ESBService
 public class WithProductsOrderManagementService {
 
     @Inject

@@ -29,18 +29,8 @@ import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.*;
 import javax.enterprise.util.AnnotationLiteral;
-import javax.inject.Qualifier;
 import javax.xml.namespace.QName;
-import java.lang.annotation.Annotation;
-import java.lang.annotation.Documented;
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-import java.lang.reflect.Type;
-import java.util.LinkedHashSet;
 import java.util.Set;
-
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -48,21 +38,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @ApplicationScoped
 public class ServiceDeployer implements Extension {
 
-    public void processAnnotatedType(@Observes ProcessAnnotatedType pat, BeanManager bm) {
-        AnnotatedType type = pat.getAnnotatedType();
-        Class<?> annotatedClass = type.getJavaClass();
-
-        if(getServiceType(annotatedClass) != null) {
-            pat.setAnnotatedType(new ServiceImplAnnotatedType(type));
-        }
-    }
-
     public void afterBeanDiscovery(@Observes AfterBeanDiscovery abd, BeanManager beanManager) {
-        Set<Bean<?>> serviceBeans = beanManager.getBeans(Object.class, new ServiceImplementationInst());
+        Set<Bean<?>> serviceBeans = beanManager.getBeans(Object.class, new ServiceAnnotationLiteral());
 
         for(Bean<?> serviceBean : serviceBeans) {
             Class<?> serviceType = getServiceType(serviceBean.getBeanClass());
-            Service serviceAnnotation = serviceType.getAnnotation(Service.class);
+            ESBService serviceAnnotation = serviceType.getAnnotation(ESBService.class);
 
             registerESBServiceProxyHandler(serviceBean, serviceAnnotation, beanManager);
             if(serviceType.isInterface()) {
@@ -71,7 +52,7 @@ public class ServiceDeployer implements Extension {
         }
     }
 
-    private void registerESBServiceProxyHandler(Bean<?> serviceBean, Service serviceAnnotation, BeanManager beanManager) {
+    private void registerESBServiceProxyHandler(Bean<?> serviceBean, ESBService serviceAnnotation, BeanManager beanManager) {
         QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
         CreationalContext creationalContext = beanManager.createCreationalContext(serviceBean);
 
@@ -80,14 +61,14 @@ public class ServiceDeployer implements Extension {
         ServiceDomains.getDomain().registerService(serviceQName, new ServiceProxyHandler(beanRef));
     }
 
-    private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
+    private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, ESBService serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
         QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
 
         abd.addBean(new ClientProxyBean(serviceQName, serviceType));
     }
 
     private Class<?> getServiceType(Class<?> annotatedClass) {
-        if(!annotatedClass.isAnnotationPresent(Service.class)) {
+        if(!annotatedClass.isAnnotationPresent(ESBService.class)) {
             Class<?>[] implementedInterfaces = annotatedClass.getInterfaces();
             Class<?> implementorType;
 
@@ -112,10 +93,10 @@ public class ServiceDeployer implements Extension {
         return annotatedClass;
     }
 
-    private QName toServiceQName(Bean<?> serviceBean, Service serviceAnnotation) {
+    private QName toServiceQName(Bean<?> serviceBean, ESBService serviceAnnotation) {
         String serviceName = serviceAnnotation.value();
 
-        // TODO: Could use the bean class package name as the namespace component of the Service QName
+        // TODO: Could use the bean class package name as the namespace component of the ESBService QName
         if(!serviceName.equals("")) {
             return new QName(serviceName);
         } else {
@@ -123,105 +104,10 @@ public class ServiceDeployer implements Extension {
         }
     }
 
-    private class ServiceAnnotationLiteral extends AnnotationLiteral<Service> implements Service {
+    private class ServiceAnnotationLiteral extends AnnotationLiteral<ESBService> implements ESBService {
         public String value() {
             // TODO: Will this filter unnamed Services only?
             return "";
-        }
-    }
-
-    private class ServiceImplAnnotatedType implements AnnotatedType {
-
-        private AnnotatedType serviceType;
-        private Service serviceAnnotation;
-        private ServiceImplementationInst serviceImplAnnotation;
-
-        private ServiceImplAnnotatedType(AnnotatedType serviceType) {
-            this.serviceType = serviceType;
-            serviceAnnotation = serviceType.getAnnotation(Service.class);
-            serviceImplAnnotation = new ServiceImplementationInst(serviceAnnotation);
-        }
-
-        public Class getJavaClass() {
-            return serviceType.getJavaClass();
-        }
-
-        public Set getConstructors() {
-            return serviceType.getConstructors();
-        }
-
-        public Set getMethods() {
-            return serviceType.getMethods();
-        }
-
-        public Set getFields() {
-            return serviceType.getFields();
-        }
-
-        public Type getBaseType() {
-            return serviceType.getBaseType();
-        }
-
-        public Set<Type> getTypeClosure() {
-            return serviceType.getTypeClosure();
-        }
-
-        public <T extends Annotation> T getAnnotation(Class<T> annotationType) {
-            if(Service.class.isAssignableFrom(annotationType)) {
-                // Hide the Service annotation...
-                return null;
-            } else if(ServiceImplementation.class.isAssignableFrom(annotationType)) {
-                return annotationType.cast(serviceImplAnnotation);
-            }
-
-            return serviceType.getAnnotation(annotationType);
-        }
-
-        public Set<Annotation> getAnnotations() {
-            Set<Annotation> annotationSet = new LinkedHashSet<Annotation>(serviceType.getAnnotations());
-
-            // Remove the Service annotation and add a ServiceImplementation annotation...
-            annotationSet.remove(serviceAnnotation);
-            annotationSet.add(serviceImplAnnotation);
-
-            return annotationSet;
-        }
-
-        public boolean isAnnotationPresent(Class<? extends Annotation> annotationType) {
-            return serviceType.isAnnotationPresent(annotationType);
-        }
-    }
-
-    @Qualifier
-    @Target({ TYPE })
-    @Retention(RUNTIME)
-    @Documented
-    private @interface ServiceImplementation {
-        String value() default "";
-    }
-
-    private class ServiceImplementationInst extends AnnotationLiteral<ServiceImplementation> implements ServiceImplementation {
-
-        private Service serviceAnnotation;
-
-        private ServiceImplementationInst() {
-        }
-
-        private ServiceImplementationInst(Service serviceAnnotation) {
-            this.serviceAnnotation = serviceAnnotation;
-        }
-
-        public String value() {
-            if(serviceAnnotation == null) {
-                // TODO: Will this filter unnamed Services only?
-                return "";
-            }
-
-            return serviceAnnotation.value();
-        }
-
-        public Service getServiceAnnotation() {
-            return serviceAnnotation;
         }
     }
 }
