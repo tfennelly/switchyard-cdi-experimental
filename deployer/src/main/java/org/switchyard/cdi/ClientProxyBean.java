@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -117,7 +118,7 @@ public class ClientProxyBean implements Bean {
             ServiceDomain domain = ServiceDomains.getDomain();
 
             if(method.getReturnType() != null && method.getReturnType() != Void.class) {
-                final ArrayBlockingQueue<Exchange> responseQueue = new ArrayBlockingQueue<Exchange>(1);
+                final BlockingQueue<Exchange> responseQueue = new ArrayBlockingQueue<Exchange>(1);
 
                 ExchangeHandler responseExchangeHandler = new ExchangeHandler() {
                     public void handleMessage(Exchange exchange) throws HandlerException {
