@@ -20,17 +20,14 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.omservice.basic;
-
-import org.switchyard.cdi.Service;
-import org.switchyard.cdi.omservice.model.OrderRequest;
-import org.switchyard.cdi.omservice.model.OrderResponse;
+package org.switchyard.cdi.prodservice;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Service
-public interface OrderManagementService {
-    
-    OrderResponse createOrder(OrderRequest request);
+public class ProductServiceImpl implements ProductService {
+
+    public Product getProduct(String productId) {
+        return new Product(productId, "MacBook Pro");
+    }
 }

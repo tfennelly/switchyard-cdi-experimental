@@ -20,19 +20,18 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.omservice.model;
-
-import org.switchyard.cdi.prodservice.Product;
+package org.switchyard.cdi.prodservice;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public class OrderResponse {
+public class Product {
 
-    public String orderId;
-    public Product product;
+    public String id;
+    public String name;
 
-    public OrderResponse(String orderId) {
-        this.orderId = orderId;
+    public Product(String id, String name) {
+        this.id = id;
+        this.name = name;
     }
 }

@@ -31,7 +31,6 @@ import javax.enterprise.inject.Any;
 import javax.enterprise.inject.Default;
 import javax.enterprise.inject.spi.Bean;
 import javax.enterprise.inject.spi.InjectionPoint;
-import javax.enterprise.inject.spi.InjectionTarget;
 import javax.enterprise.util.AnnotationLiteral;
 import javax.xml.namespace.QName;
 import java.lang.annotation.Annotation;
@@ -42,6 +41,7 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -50,12 +50,14 @@ public class ClientProxyBean implements Bean {
 
     private QName serviceQName;
     private Class<?> beanClass;
-    private InjectionTarget injectionTarget;
+    private Object proxyBean;
 
-    public ClientProxyBean(QName serviceQName, Class<?> beanClass, InjectionTarget injectionTarget) {
+    public ClientProxyBean(QName serviceQName, Class<?> beanClass) {
         this.serviceQName = serviceQName;
         this.beanClass = beanClass;
-        this.injectionTarget = injectionTarget;
+        proxyBean = Proxy.newProxyInstance(ClientProxyBean.class.getClassLoader(),
+                                          new Class[] { beanClass },
+                                          new ClientProxyInvocationHandler());
     }
 
     public Set<Type> getTypes() {
@@ -94,7 +96,7 @@ public class ClientProxyBean implements Bean {
     }
 
     public Set<InjectionPoint> getInjectionPoints() {
-        return injectionTarget.getInjectionPoints();
+        return Collections.emptySet();
     }
 
     public Class<? extends Annotation> getScope() {
@@ -102,9 +104,7 @@ public class ClientProxyBean implements Bean {
     }
 
     public Object create(CreationalContext creationalContext) {
-        return Proxy.newProxyInstance(ClientProxyBean.class.getClassLoader(),
-                                          new Class[] { beanClass },
-                                          new ClientProxyInvocationHandler());
+        return proxyBean;
     }
 
     public void destroy(Object instance, CreationalContext creationalContext) {
@@ -117,13 +117,28 @@ public class ClientProxyBean implements Bean {
             ServiceDomain domain = ServiceDomains.getDomain();
 
             if(method.getReturnType() != null && method.getReturnType() != Void.class) {
-                // TODO: Modify to support IN_OUT exchange (async request/response)...
-                Exchange exchange = domain.createExchange(serviceQName, ExchangePattern.IN_ONLY, null);
+                final ArrayBlockingQueue<Exchange> responseQueue = new ArrayBlockingQueue<Exchange>(1);
 
-                Message sendMessage = prepareSend(exchange, args, method);
-                exchange.send(sendMessage);
+                ExchangeHandler responseExchangeHandler = new ExchangeHandler() {
+                    public void handleMessage(Exchange exchange) throws HandlerException {
+                        responseQueue.offer(exchange);
+                    }
 
-                return null;
+                    public void handleFault(Exchange exchange) {
+                        // TODO: properly handle fault
+                        responseQueue.offer(exchange);
+                    }
+                };
+
+                Exchange exchangeIn = domain.createExchange(serviceQName, ExchangePattern.IN_OUT, responseExchangeHandler);
+
+                Message sendMessage = prepareSend(exchangeIn, args, method);
+                exchangeIn.send(sendMessage);
+
+                Exchange exchangeOut = responseQueue.take();
+                Object responseObject = exchangeOut.getMessage().getContent();
+                
+                return responseObject;
             } else {
                 Exchange exchange = domain.createExchange(serviceQName, ExchangePattern.IN_ONLY, null);
 

@@ -81,11 +81,9 @@ public class ServiceDeployer implements Extension {
     }
 
     private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
-//        QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
-//        AnnotatedType<?> annotatedType = beanManager.createAnnotatedType(serviceType);
-//        InjectionTarget injectionTarget = beanManager.createInjectionTarget(annotatedType);
-//
-//        abd.addBean(new ClientProxyBean(serviceQName, serviceType, injectionTarget));
+        QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
+
+        abd.addBean(new ClientProxyBean(serviceQName, serviceType));
     }
 
     private Class<?> getServiceType(Class<?> annotatedClass) {

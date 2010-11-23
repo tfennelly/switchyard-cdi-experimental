@@ -20,20 +20,42 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.omservice.basic;
+package org.switchyard.cdi.omservice.with_products;
 
-import org.switchyard.cdi.Service;
+import org.junit.Assert;
+import org.junit.Test;
+import org.switchyard.*;
+import org.switchyard.cdi.AbstractCDITest;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
+import org.switchyard.internal.ServiceDomains;
+
+import javax.xml.namespace.QName;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Service
-public class BasicOrderManagementService {
+public class WithProductsInOutTest extends AbstractCDITest {
 
-    public OrderResponse createOrder(OrderRequest request) {
+    @Test
+    public void test() {
+        ServiceDomain domain = ServiceDomains.getDomain();
 
-        return new OrderResponse(request.orderId);
+        // Consume the OM model...
+        MockHandler responseConsumer = new MockHandler();
+        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
+
+        Message inMessage = MessageBuilder.newInstance().buildMessage();
+        inMessage.setContent(new OrderRequest("D123", "ABCD"));
+
+        exchange.send(inMessage);
+
+        // wait, since this is async
+        responseConsumer.waitForMessage();
+
+        OrderResponse response = (OrderResponse) responseConsumer._messages.poll().getMessage().getContent();
+        Assert.assertEquals("D123", response.orderId);
+        Assert.assertEquals("ABCD", response.product.id);
+        Assert.assertEquals("MacBook Pro", response.product.name);
     }
 }
