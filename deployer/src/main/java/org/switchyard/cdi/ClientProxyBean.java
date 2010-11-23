@@ -133,7 +133,7 @@ public class ClientProxyBean implements Bean {
                 Exchange exchangeIn = domain.createExchange(serviceQName, ExchangePattern.IN_OUT, responseExchangeHandler);
 
                 Message sendMessage = prepareSend(exchangeIn, args, method);
-                exchangeIn.send(sendMessage);
+                exchangeIn.send(sendMessage, exchangeIn.getContext(Scope.MESSAGE));
 
                 Exchange exchangeOut = responseQueue.take();
                 Object responseObject = exchangeOut.getMessage().getContent();
@@ -153,7 +153,6 @@ public class ClientProxyBean implements Bean {
             ServiceProxyHandler.setOperationName(exchange, method.getName());
             Message inMessage = MessageBuilder.newInstance().buildMessage();
             inMessage.setContent(args);
-
             return inMessage;
         }
 
