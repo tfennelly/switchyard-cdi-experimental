@@ -55,11 +55,11 @@ public class ServiceProxyHandler implements ExchangeHandler {
     }
 
     public static void setOperationName(Exchange exchange, String name) {
-        exchange.getContext(Scope.MESSAGE).setProperty(OPERATION_NAME, name);
+        exchange.getContext(Scope.EXCHANGE).setProperty(OPERATION_NAME, name);
     }
 
     private String getOperationName(Exchange exchange) {
-        return (String) exchange.getContext(Scope.MESSAGE).getProperty(OPERATION_NAME);
+        return (String) exchange.getContext(Scope.EXCHANGE).getProperty(OPERATION_NAME);
     }
 
     private void handle(Exchange exchange) {

@@ -22,9 +22,12 @@
 
 package org.switchyard.cdi.prodservice;
 
+import org.switchyard.cdi.Service;
+
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
+@Service("ProductService")
 public class ProductServiceImpl implements ProductService {
 
     public Product getProduct(String productId) {

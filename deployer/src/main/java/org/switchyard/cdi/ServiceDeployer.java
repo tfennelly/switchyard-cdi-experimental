@@ -27,9 +27,15 @@ import org.switchyard.internal.ServiceDomains;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.context.spi.CreationalContext;
 import javax.enterprise.event.Observes;
+import javax.enterprise.inject.Any;
 import javax.enterprise.inject.spi.*;
 import javax.enterprise.util.AnnotationLiteral;
 import javax.xml.namespace.QName;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Member;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -38,22 +44,44 @@ import java.util.Set;
 @ApplicationScoped
 public class ServiceDeployer implements Extension {
 
+    private List<ClientProxyBean> createdProxyBeans = new ArrayList<ClientProxyBean>();
+
     public void afterBeanDiscovery(@Observes AfterBeanDiscovery abd, BeanManager beanManager) {
-        Set<Bean<?>> serviceBeans = beanManager.getBeans(Object.class, new ServiceAnnotationLiteral());
+        Set<Bean<?>> allBeans = beanManager.getBeans(Object.class, new AnnotationLiteral<Any>() {});
 
-        for(Bean<?> serviceBean : serviceBeans) {
-            Class<?> serviceType = getServiceType(serviceBean.getBeanClass());
-            ESBService serviceAnnotation = serviceType.getAnnotation(ESBService.class);
+        for(Bean<?> bean : allBeans) {
+            Set<InjectionPoint> injectionPoints = bean.getInjectionPoints();
 
-            registerESBServiceProxyHandler(serviceBean, serviceAnnotation, beanManager);
-            if(serviceType.isInterface()) {
-                addInjectableClientProxyBean(serviceBean, serviceType, serviceAnnotation, beanManager, abd);
+            // Create proxies for the relevant injection points...
+            for(InjectionPoint injectionPoint : injectionPoints) {
+                for(Annotation qualifier : injectionPoint.getQualifiers()) {
+                    if(Service.class.isAssignableFrom(qualifier.annotationType())) {
+                        Member member = injectionPoint.getMember();
+                        if(member instanceof Field) {
+                            Class<?> memberType = ((Field) member).getType();
+                            if(memberType.isInterface()) {
+                                addInjectableClientProxyBean((Field) member, (Service) qualifier, injectionPoint.getQualifiers(), beanManager, abd);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Create Service Proxy ExchangeHandlers and register them as Services, for all @Service beans...
+            if(isServiceBean(bean)) {
+                Class<?> serviceType = bean.getBeanClass();
+                Service serviceAnnotation = serviceType.getAnnotation(Service.class);
+
+                registerESBServiceProxyHandler(bean, serviceType, serviceAnnotation, beanManager);
+                if(serviceType.isInterface()) {
+                    addInjectableClientProxyBean(bean, serviceType, serviceAnnotation, beanManager, abd);
+                }
             }
         }
     }
 
-    private void registerESBServiceProxyHandler(Bean<?> serviceBean, ESBService serviceAnnotation, BeanManager beanManager) {
-        QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
+    private void registerESBServiceProxyHandler(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager) {
+        QName serviceQName = toServiceQName(serviceAnnotation, serviceType.getSimpleName());
         CreationalContext creationalContext = beanManager.createCreationalContext(serviceBean);
 
         // Register the Service in the ESB domain...
@@ -61,53 +89,44 @@ public class ServiceDeployer implements Extension {
         ServiceDomains.getDomain().registerService(serviceQName, new ServiceProxyHandler(beanRef));
     }
 
-    private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, ESBService serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
-        QName serviceQName = toServiceQName(serviceBean, serviceAnnotation);
+    private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
+        QName serviceQName = toServiceQName(serviceAnnotation, serviceBean.getBeanClass().getSimpleName());
 
-        abd.addBean(new ClientProxyBean(serviceQName, serviceType));
+        addClientProxyBean(serviceQName, serviceType, null, abd);
     }
 
-    private Class<?> getServiceType(Class<?> annotatedClass) {
-        if(!annotatedClass.isAnnotationPresent(ESBService.class)) {
-            Class<?>[] implementedInterfaces = annotatedClass.getInterfaces();
-            Class<?> implementorType;
+    private void addInjectableClientProxyBean(Field injectionPointField, Service serviceAnnotation, Set<Annotation> qualifiers, BeanManager beanManager, AfterBeanDiscovery abd) {
+        QName serviceQName = toServiceQName(serviceAnnotation, injectionPointField.getType().getSimpleName());
 
-            for(Class<?> implementedInterface : implementedInterfaces) {
-                implementorType = getServiceType(implementedInterface);
-                if(implementorType != null) {
-                    return implementorType;
-                }
+        addClientProxyBean(serviceQName, injectionPointField.getType(), qualifiers, abd);
+    }
+
+    private void addClientProxyBean(QName serviceQName, Class<?> beanClass, Set<Annotation> qualifiers, AfterBeanDiscovery abd) {
+        // Check do we already have a proxy for this service interface...
+        for(ClientProxyBean clientProxyBean : createdProxyBeans) {
+            if(serviceQName.equals(clientProxyBean.getServiceQName()) && beanClass == clientProxyBean.getBeanClass()) {
+                // ignore... we already have a proxy ...
+                return;
             }
-
-            Class<?> superClass = annotatedClass.getSuperclass();
-            if(superClass != null) {
-                implementorType = getServiceType(superClass);
-                if(implementorType != null) {
-                    return implementorType;
-                }
-            }
-
-            return null;
         }
 
-        return annotatedClass;
+        ClientProxyBean clientProxyBean = new ClientProxyBean(serviceQName, beanClass, qualifiers);
+        createdProxyBeans.add(clientProxyBean);
+        abd.addBean(clientProxyBean);
     }
 
-    private QName toServiceQName(Bean<?> serviceBean, ESBService serviceAnnotation) {
+    private boolean isServiceBean(Bean<?> bean) {
+        return bean.getBeanClass().isAnnotationPresent(Service.class);
+    }
+
+    private QName toServiceQName(Service serviceAnnotation, String defaultName) {
         String serviceName = serviceAnnotation.value();
 
-        // TODO: Could use the bean class package name as the namespace component of the ESBService QName
+        // TODO: Could use the bean class package name as the namespace component of the Service QName
         if(!serviceName.equals("")) {
             return new QName(serviceName);
         } else {
-            return new QName(serviceBean.getBeanClass().getSimpleName());
-        }
-    }
-
-    private class ServiceAnnotationLiteral extends AnnotationLiteral<ESBService> implements ESBService {
-        public String value() {
-            // TODO: Will this filter unnamed Services only?
-            return "";
+            return new QName(defaultName);
         }
     }
 }

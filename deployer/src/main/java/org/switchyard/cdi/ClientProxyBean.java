@@ -51,14 +51,28 @@ public class ClientProxyBean implements Bean {
 
     private QName serviceQName;
     private Class<?> beanClass;
+    private Set<Annotation> qualifiers;
     private Object proxyBean;
 
-    public ClientProxyBean(QName serviceQName, Class<?> beanClass) {
+    public ClientProxyBean(QName serviceQName, Class<?> beanClass, Set<Annotation> qualifiers) {
         this.serviceQName = serviceQName;
         this.beanClass = beanClass;
+
+        if(qualifiers != null) {
+            this.qualifiers = qualifiers;
+        } else {
+            this.qualifiers = new HashSet<Annotation>();
+            this.qualifiers.add(new AnnotationLiteral<Default>() {});
+            this.qualifiers.add(new AnnotationLiteral<Any>() {});
+        }
+
         proxyBean = Proxy.newProxyInstance(ClientProxyBean.class.getClassLoader(),
                                           new Class[] { beanClass },
                                           new ClientProxyInvocationHandler());
+    }
+
+    public QName getServiceQName() {
+        return serviceQName;
     }
 
     public Set<Type> getTypes() {
@@ -69,9 +83,6 @@ public class ClientProxyBean implements Bean {
     }
 
     public Set<Annotation> getQualifiers() {
-        Set<Annotation> qualifiers = new HashSet<Annotation>();
-        qualifiers.add(new AnnotationLiteral<Default>() {});
-        qualifiers.add(new AnnotationLiteral<Any>() {});
         return qualifiers;
     }
 

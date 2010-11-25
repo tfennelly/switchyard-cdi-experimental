@@ -22,12 +22,9 @@
 
 package org.switchyard.cdi.prodservice;
 
-import org.switchyard.cdi.ESBService;
-
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@ESBService
 public interface ProductService {
 
     Product getProduct(String productId);

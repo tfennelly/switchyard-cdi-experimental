@@ -13,7 +13,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <switchyard.version>1.0-SNAPSHOT</switchyard.version>
-        <weld.version>1.1.0-SNAPSHOT</weld.version>
+        <weld.version>1.1.0.Beta2</weld.version>
     </properties>
 
     <dependencies>
@@ -84,5 +84,41 @@
             </testResource>
         </testResources>
     </build>    
+
+    <repositories>
+       <repository>
+          <id>jboss-public-repository-group</id>
+
+          <name>JBoss Public Maven Repository Group</name>
+          <url>http://repository.jboss.org/nexus/content/groups/public</url>
+          <releases>
+             <enabled>true</enabled>
+             <updatePolicy>never</updatePolicy>
+          </releases>
+          <snapshots>
+
+             <enabled>true</enabled>
+             <updatePolicy>never</updatePolicy>
+          </snapshots>
+       </repository>
+    </repositories>
+    <pluginRepositories>
+       <pluginRepository>
+          <id>jboss-public-repository-group</id>
+
+          <name>JBoss Public Maven Repository Group</name>
+          <url>http://repository.jboss.org/nexus/content/groups/public</url>
+          <releases>
+             <enabled>true</enabled>
+             <updatePolicy>never</updatePolicy>
+          </releases>
+          <snapshots>
+
+             <enabled>false</enabled>
+             <updatePolicy>never</updatePolicy>
+          </snapshots>
+       </pluginRepository>
+    </pluginRepositories>
+
 
 </project>
