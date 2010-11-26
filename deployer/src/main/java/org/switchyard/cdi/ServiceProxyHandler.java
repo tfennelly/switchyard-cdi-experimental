@@ -23,7 +23,12 @@
 package org.switchyard.cdi;
 
 import org.switchyard.*;
+import org.switchyard.cdi.transform.From;
+import org.switchyard.cdi.transform.PayloadSpec;
+import org.switchyard.cdi.transform.TransformRegistry;
 
+import java.io.StringWriter;
+import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -38,10 +43,12 @@ public class ServiceProxyHandler implements ExchangeHandler {
 
     private Object serviceBean;
     private Class<? extends Object> serviceClass;
+    private TransformRegistry transformRegistry;
     private Method[] serviceMethods;
 
-    public ServiceProxyHandler(Object serviceBean) {
+    public ServiceProxyHandler(Object serviceBean, TransformRegistry transformRegistry) {
         this.serviceBean = serviceBean;
+        this.transformRegistry = transformRegistry;
         serviceClass = serviceBean.getClass();
         serviceMethods = serviceClass.getMethods();
     }
@@ -68,10 +75,26 @@ public class ServiceProxyHandler implements ExchangeHandler {
         if(invocation != null) {
             try {
                 if(exchange.getPattern() == ExchangePattern.IN_OUT) {
-                    Object outMessagePayload = invocation.method.invoke(serviceBean, invocation.args);
+                    Object responsePayload = invocation.method.invoke(serviceBean, invocation.args);
                     Message message = MessageBuilder.newInstance().buildMessage();
 
-                    message.setContent(outMessagePayload);
+                    PayloadSpec exchangePayloadSpec = PayloadSpec.getOutPayloadSpec(exchange);
+                    if(exchangePayloadSpec != null) {
+                        PayloadSpec responsePayloadSpec = PayloadSpec.toPayloadSpec(responsePayload.getClass());
+                        if(!exchangePayloadSpec.equals(responsePayloadSpec)) {
+                            // Outbound transformation required...
+                            TransformRegistry.TransformSpec transformSpec = transformRegistry.get(responsePayloadSpec, exchangePayloadSpec);
+
+                            if(transformSpec ==  null) {
+                                // TODO: sendFault ... need to define a transformation ...
+                                return;
+                            }
+                            
+                            responsePayload = transformPayload(responsePayload, transformSpec);                            
+                        }
+                    }
+
+                    message.setContent(responsePayload);
                     exchange.send(message);
                 } else {
                     invocation.method.invoke(serviceBean, invocation.args);
@@ -84,87 +107,124 @@ public class ServiceProxyHandler implements ExchangeHandler {
                 // TODO: sendFault...
             }
         } else {
+            System.out.println("Unable to resolve invocation parameters.");
             // TODO: sendFault...
         }
     }
 
     private Invocation getInvocation(Exchange exchange) {
 
-        Object[] args = getArgs(exchange);
+        String operationName = getOperationName(exchange);
 
-        if(args != null) {
-            String operationName = getOperationName(exchange);
-            List<Method> candidateMethods = getCandidateMethods(args);
+        if(operationName != null) {
+            List<Method> candidateMethods = getCandidateMethods(operationName);
 
-            // TODO: CDI may have a funky way of resolving the target method, that I missed in the spec...
-            if(operationName != null) {
-                for(Method candidateMethod : candidateMethods) {
-                    if(candidateMethod.getName().equals(operationName)) {
-                        return new Invocation(candidateMethod, args);
+            // Operation name must resolve to exactly one bean method...
+            if(candidateMethods.size() == 0) {
+                // TODO: sendFault ??? ...
+                return null;
+            } else if(candidateMethods.size() > 1) {
+                // TODO: sendFault ??? ...
+                return null;
+            }
+
+            Method operationMethod = candidateMethods.get(0);
+            PayloadSpec exchangePayloadSpec = PayloadSpec.getInPayloadSpec(exchange);
+
+            if(exchangePayloadSpec == null) {
+                return new Invocation(operationMethod, exchange.getMessage().getContent());
+            }
+
+            Class<?>[] operationArgs = operationMethod.getParameterTypes();
+            if(operationArgs.length == 1) {
+                PayloadSpec opperationPayloadSpec = PayloadSpec.toPayloadSpec(operationArgs[0]);
+
+                if(exchangePayloadSpec.equals(opperationPayloadSpec)) {
+                    // No inbound transformation required...
+                    return new Invocation(operationMethod, exchange.getMessage().getContent());
+                } else {
+                    // Inbound transformation required...
+                    TransformRegistry.TransformSpec transformSpec = transformRegistry.get(exchangePayloadSpec, opperationPayloadSpec);
+
+                    if(transformSpec ==  null) {
+                        // TODO: sendFault ... need to define a transformation ...
+                        return null;
                     }
+
+                    Object transformedPayload = transformPayload(exchange.getMessage().getContent(), transformSpec);
+                    return new Invocation(operationMethod, transformedPayload);
                 }
-            } else if(!candidateMethods.isEmpty()) {
-                // TODO: What if there are multiple impls?
-                return new Invocation(candidateMethods.get(0), args);
-            }
-        }
-
-        return null;
-    }
-
-    private Object[] getArgs(Exchange exchange) {
-        Object paramPayload = exchange.getMessage().getContent();
-
-        if(paramPayload != null) {
-            if(paramPayload.getClass().isArray()) {
-                return (Object[]) paramPayload;
             } else {
-                return new Object[] {paramPayload};
+                System.out.println("Unsupported... multi-args not yet suppoted....");
+                // TODO: sendFault ... don't support multi-args yet ...
             }
+        } else {
+            System.out.println("Operation name not specified on exchange.");
+            // TODO: Operation name not specified... sendFault  ...
         }
 
         return null;
     }
 
-    private List<Method> getCandidateMethods(Object[] args) {
+    private Object transformPayload(Object payload, TransformRegistry.TransformSpec transformSpec) {
+        Method transformMethod = transformSpec.getTransformMethod();
+        Class<?>[] transformParams = transformMethod.getParameterTypes();
+
+        try {
+            if(transformParams.length == 1) {
+                return transformMethod.invoke(transformSpec.getTransformer(), payload);
+            } else {
+                Class<?> toType = transformParams[1];
+
+                if(toType == Writer.class) {
+                    StringWriter outputWriter = new StringWriter();
+                    transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
+                    outputWriter.flush();
+                    return outputWriter.toString();
+                } else {
+                    // TODO: Support others ??
+                }
+            }
+        } catch (IllegalAccessException e) {
+            // TODO: sendFault ...
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            // TODO: sendFault ... 
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    private List<Method> getCandidateMethods(String name) {
         List<Method> candidateMethods = new ArrayList<Method>();
 
         for(Method serviceMethod : serviceMethods) {
             if(serviceMethod.getDeclaringClass() == Object.class) {
                 continue;
-            }
-
-            Class<?>[] serviceMethodArgTypes = serviceMethod.getParameterTypes();
-
-            if(serviceMethodArgTypes.length == args.length) {
-                for(int i = 0; i < args.length; i++) {
-                    Object arg = args[i];
-
-                    if(arg == null) {
-                        if(serviceMethodArgTypes[i].isPrimitive()) {
-                            // Null is matchable s long as it's not a primitive...
-                            continue;
-                        }
-                    } else if(arg.getClass() != serviceMethodArgTypes[i]) {
-                        // must be an exact type match
-                        continue;
-                    }
-
-                    candidateMethods.add(serviceMethod);
-                }
+            } else if(serviceMethod.getName().equals(name)) {
+                candidateMethods.add(serviceMethod);
             }
         }
-        
+
         return candidateMethods;
     }
 
-    private class Invocation {
+    private static class Invocation {
         private Method method;
         private Object[] args;
 
-        private Invocation(Method method, Object[] args) {
+        private Invocation(Method method, Object arg) {
             this.method = method;
-            this.args = args;
+            this.args = castArg(arg);
+        }
+
+        private static Object[] castArg(Object arg) {
+            if(arg.getClass().isArray()) {
+                return (Object[].class).cast(arg);
+            } else {
+                return new Object[] {arg};
+            }
         }
     }
 

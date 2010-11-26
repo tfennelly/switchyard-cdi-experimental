@@ -26,6 +26,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.switchyard.*;
 import org.switchyard.cdi.AbstractCDITest;
+import org.switchyard.cdi.ServiceProxyHandler;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
 import org.switchyard.internal.ServiceDomains;
@@ -45,6 +46,8 @@ public class BasicInOutTest extends AbstractCDITest {
         MockHandler responseConsumer = new MockHandler();
         Exchange exchange = domain.createExchange(new QName("BasicOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
 
+        ServiceProxyHandler.setOperationName(exchange, "createOrder");
+        
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         inMessage.setContent(new OrderRequest("D123", "ABCD"));
 

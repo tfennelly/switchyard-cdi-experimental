@@ -20,37 +20,37 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.prodservice;
+package org.switchyard.cdi.transform;
+
+import junit.framework.TestCase;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public class Product {
+public class PayloadSpecTest extends TestCase {
 
-    public String id;
-    public String name;
+    PayloadSpec a1 = new PayloadSpec("a", "a");
+    PayloadSpec a2 = new PayloadSpec("a", "a");
+    PayloadSpec b = new PayloadSpec("b", "b");
 
-    public Product() {
+    public void test_equals() {
+        assertEquals(a1, a2);
+        assertNotSame(a1, b);
     }
 
-    public Product(String id, String name) {
-        this.id = id;
-        this.name = name;
-    }
+    public void test_hashing() {
+        Set<PayloadSpec> hashSet = new HashSet<PayloadSpec>();
 
-    public String getId() {
-        return id;
-    }
+        hashSet.add(a1);
+        hashSet.add(a2); // should replace a1
+        hashSet.add(b);
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
+        assertEquals(2, hashSet.size());
+        assertTrue(hashSet.contains(a1));
+        assertTrue(hashSet.contains(a2));
+        assertTrue(hashSet.contains(b));
     }
 }

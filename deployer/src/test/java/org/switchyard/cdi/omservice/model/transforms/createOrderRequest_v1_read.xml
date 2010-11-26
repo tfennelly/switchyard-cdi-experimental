@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<smooks-resource-list xmlns="http://www.milyn.org/xsd/smooks-1.1.xsd"
+                      xmlns:jb="http://www.milyn.org/xsd/smooks/javabean-1.4.xsd">
+
+    <jb:bean beanId="orderRequest" class="org.switchyard.cdi.omservice.model.OrderRequest" createOnElement="#document">
+        <jb:value property="orderId" data="createOrder/orderId" />
+        <jb:value property="productId" data="createOrder/productId" />
+    </jb:bean>
+
+</smooks-resource-list>

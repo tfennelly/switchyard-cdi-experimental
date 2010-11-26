@@ -22,6 +22,8 @@
 
 package org.switchyard.cdi;
 
+import org.switchyard.cdi.transform.TransformRegistry;
+import org.switchyard.cdi.transform.Transformer;
 import org.switchyard.internal.ServiceDomains;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -34,6 +36,7 @@ import javax.xml.namespace.QName;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -47,6 +50,7 @@ public class ServiceDeployer implements Extension {
     private List<ClientProxyBean> createdProxyBeans = new ArrayList<ClientProxyBean>();
 
     public void afterBeanDiscovery(@Observes AfterBeanDiscovery abd, BeanManager beanManager) {
+        TransformRegistry transformRegistry = getTransformRegistry(beanManager);
         Set<Bean<?>> allBeans = beanManager.getBeans(Object.class, new AnnotationLiteral<Any>() {});
 
         for(Bean<?> bean : allBeans) {
@@ -72,21 +76,29 @@ public class ServiceDeployer implements Extension {
                 Class<?> serviceType = bean.getBeanClass();
                 Service serviceAnnotation = serviceType.getAnnotation(Service.class);
 
-                registerESBServiceProxyHandler(bean, serviceType, serviceAnnotation, beanManager);
+                registerESBServiceProxyHandler(bean, serviceType, serviceAnnotation, beanManager, transformRegistry);
                 if(serviceType.isInterface()) {
                     addInjectableClientProxyBean(bean, serviceType, serviceAnnotation, beanManager, abd);
                 }
             }
+
+            // Add the transform methods to the TransformRegistry...
+            if(isTransformerBean(bean)) {
+                CreationalContext creationalContext = beanManager.createCreationalContext(bean);
+                Object transformBeanInst =  beanManager.getReference(bean, Object.class, creationalContext);
+
+                transformRegistry.add(transformBeanInst);
+            }
         }
     }
 
-    private void registerESBServiceProxyHandler(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager) {
+    private void registerESBServiceProxyHandler(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, TransformRegistry transformRegistry) {
         QName serviceQName = toServiceQName(serviceAnnotation, serviceType.getSimpleName());
         CreationalContext creationalContext = beanManager.createCreationalContext(serviceBean);
 
         // Register the Service in the ESB domain...
         Object beanRef = beanManager.getReference(serviceBean, Object.class, creationalContext);
-        ServiceDomains.getDomain().registerService(serviceQName, new ServiceProxyHandler(beanRef));
+        ServiceDomains.getDomain().registerService(serviceQName, new ServiceProxyHandler(beanRef, transformRegistry));
     }
 
     private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {
@@ -119,6 +131,10 @@ public class ServiceDeployer implements Extension {
         return bean.getBeanClass().isAnnotationPresent(Service.class);
     }
 
+    private boolean isTransformerBean(Bean<?> bean) {
+        return bean.getBeanClass().isAnnotationPresent(Transformer.class);
+    }
+
     private QName toServiceQName(Service serviceAnnotation, String defaultName) {
         String serviceName = serviceAnnotation.value();
 
@@ -128,5 +144,17 @@ public class ServiceDeployer implements Extension {
         } else {
             return new QName(defaultName);
         }
+    }
+
+    private TransformRegistry getTransformRegistry(BeanManager beanManager) {
+        Set<Bean<?>> transformRegistryBeans = beanManager.getBeans(TransformRegistry.class);
+
+        if(!transformRegistryBeans.isEmpty()) {
+            Bean regBean = transformRegistryBeans.iterator().next();
+            CreationalContext creationalContext = beanManager.createCreationalContext(regBean);
+            return (TransformRegistry) beanManager.getReference(regBean, TransformRegistry.class, creationalContext);
+        }
+
+        throw new IllegalStateException("Unexpected Exception.  Failed to get a reference to the TransformRegistry bean.");        
     }
 }

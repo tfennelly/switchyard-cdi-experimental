@@ -32,7 +32,26 @@ public class OrderResponse {
     public String orderId;
     public Product product;
 
+    public OrderResponse() {
+    }
+
     public OrderResponse(String orderId) {
         this.orderId = orderId;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public void setProduct(Product product) {
+        this.product = product;
     }
 }

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<smooks-resource-list xmlns="http://www.milyn.org/xsd/smooks-1.1.xsd"
+                      xmlns:ftl="http://www.milyn.org/xsd/smooks/freemarker-1.1.xsd">
+
+    <ftl:freemarker applyOnElement="#document">
+        <ftl:template><!--<soap11:Envelope xmlns="urn:createOrderResponse:v1"
+                 xmlns:soap11="http://schemas.xmlsoap.org/soap/envelope/">
+
+    <soap11:Body>
+        <createOrderResponse>
+            <orderId>${orderResponse.orderId}</orderId>
+            <productId>${orderResponse.product.id}</productId>
+            <productName>${orderResponse.product.name}</productName>
+        </createOrderResponse>
+    </soap11:Body>
+
+</soap11:Envelope>--></ftl:template>
+    </ftl:freemarker>
+
+</smooks-resource-list>

@@ -30,8 +30,27 @@ public class OrderRequest {
     public String orderId;
     public String productId;
 
+    public OrderRequest() {
+    }
+
     public OrderRequest(String orderId, String productId) {
         this.orderId = orderId;
+        this.productId = productId;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
+    public String getProductId() {
+        return productId;
+    }
+
+    public void setProductId(String productId) {
         this.productId = productId;
     }
 }

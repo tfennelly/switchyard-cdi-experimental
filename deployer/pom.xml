@@ -13,7 +13,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <switchyard.version>1.0-SNAPSHOT</switchyard.version>
-        <weld.version>1.1.0.Beta2</weld.version>
+        <weld.version>1.1.0-SNAPSHOT</weld.version>
     </properties>
 
     <dependencies>
@@ -48,19 +48,22 @@
             <version>${switchyard.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>xmlunit</groupId>
+            <artifactId>xmlunit</artifactId>
+            <version>1.1</version>
+            <scope>test</scope>
+        </dependency>        
+        <dependency>
+            <groupId>org.milyn</groupId>
+            <artifactId>milyn-smooks-all</artifactId>
+            <version>1.4-SNAPSHOT</version>
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>1.5</source>
-                    <target>1.5</target>
-                </configuration>
-            </plugin>
-        </plugins>
         <resources>
             <resource>
                 <directory>src/main/java</directory>
@@ -88,37 +91,13 @@
     <repositories>
        <repository>
           <id>jboss-public-repository-group</id>
-
           <name>JBoss Public Maven Repository Group</name>
           <url>http://repository.jboss.org/nexus/content/groups/public</url>
-          <releases>
-             <enabled>true</enabled>
-             <updatePolicy>never</updatePolicy>
-          </releases>
           <snapshots>
-
              <enabled>true</enabled>
-             <updatePolicy>never</updatePolicy>
           </snapshots>
        </repository>
     </repositories>
-    <pluginRepositories>
-       <pluginRepository>
-          <id>jboss-public-repository-group</id>
-
-          <name>JBoss Public Maven Repository Group</name>
-          <url>http://repository.jboss.org/nexus/content/groups/public</url>
-          <releases>
-             <enabled>true</enabled>
-             <updatePolicy>never</updatePolicy>
-          </releases>
-          <snapshots>
-
-             <enabled>false</enabled>
-             <updatePolicy>never</updatePolicy>
-          </snapshots>
-       </pluginRepository>
-    </pluginRepositories>
 
 
 </project>

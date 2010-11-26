@@ -22,15 +22,24 @@
 
 package org.switchyard.cdi.omservice.with_products;
 
+import org.custommonkey.xmlunit.XMLAssert;
+import org.custommonkey.xmlunit.XMLUnit;
 import org.junit.Assert;
 import org.junit.Test;
+import org.milyn.io.StreamUtils;
 import org.switchyard.*;
 import org.switchyard.cdi.AbstractCDITest;
+import org.switchyard.cdi.ServiceProxyHandler;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
+import org.switchyard.cdi.transform.PayloadSpec;
 import org.switchyard.internal.ServiceDomains;
+import org.xml.sax.SAXException;
 
 import javax.xml.namespace.QName;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -38,13 +47,15 @@ import javax.xml.namespace.QName;
 public class WithProductsInOutTest extends AbstractCDITest {
 
     @Test
-    public void test() {
+    public void test_Java() {
         ServiceDomain domain = ServiceDomains.getDomain();
 
         // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
         Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
 
+        ServiceProxyHandler.setOperationName(exchange, "createOrder");
+        
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         inMessage.setContent(new OrderRequest("D123", "ABCD"));
 
@@ -58,4 +69,36 @@ public class WithProductsInOutTest extends AbstractCDITest {
         Assert.assertEquals("ABCD", response.product.id);
         Assert.assertEquals("MacBook Pro", response.product.name);
     }
+
+    @Test
+    public void test_SOAP() throws IOException, SAXException {
+        ServiceDomain domain = ServiceDomains.getDomain();
+
+        // Consume the OM model...
+        MockHandler responseConsumer = new MockHandler();
+        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
+
+        ServiceProxyHandler.setOperationName(exchange, "createOrder");
+        PayloadSpec.setInPayloadSpec(exchange, "application/soap+xml", "urn:createOrderRequest:v1");
+        PayloadSpec.setOutPayloadSpec(exchange, "application/soap+xml", "urn:createOrderResponse:v1");
+
+        Message inMessage = MessageBuilder.newInstance().buildMessage();
+        String request = StreamUtils.readStreamAsString(getClass().getResourceAsStream("createOrderRequest.xml"));
+        inMessage.setContent(request);
+
+        exchange.send(inMessage);
+
+        // wait, since this is async
+        responseConsumer.waitForMessage();
+
+        String response = (String) responseConsumer._messages.poll().getMessage().getContent();
+        System.out.println("\nRequest:");
+        System.out.println(request);
+        System.out.println("\nResponse:");
+        System.out.println(response);
+
+        XMLUnit.setIgnoreWhitespace( true );
+        XMLAssert.assertXMLEqual(new InputStreamReader(getClass().getResourceAsStream("expected_createOrderResponse.xml")), new StringReader(response));
+    }
+
 }
