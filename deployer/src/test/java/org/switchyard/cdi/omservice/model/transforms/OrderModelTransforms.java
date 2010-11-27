@@ -44,25 +44,25 @@ import javax.xml.transform.stream.StreamResult;
 @Transformer
 public class OrderModelTransforms {
 
-    private Smooks readXMLRequest_V1;
-    private Smooks writeXMLResponse_V1;
+    private Smooks readSOAP_V1;
+    private Smooks writeSOAP_V1;
 
     public OrderModelTransforms() throws IOException, SAXException {
-        readXMLRequest_V1 = new Smooks(getClass().getResourceAsStream("createOrderRequest_v1_read.xml"));
-        writeXMLResponse_V1 = new Smooks(getClass().getResourceAsStream("createOrderResponse_v1_write.xml"));
+        readSOAP_V1 = new Smooks(getClass().getResourceAsStream("createOrderRequest_v1_read.xml"));
+        writeSOAP_V1 = new Smooks(getClass().getResourceAsStream("createOrderResponse_v1_write.xml"));
     }
 
-    public OrderRequest readSOAPRequest_V1(@From("urn:createOrderRequest:v1:soap") String inXML) {
+    public OrderRequest readSOAP_V1(@From("urn:createOrderRequest:v1:soap") String inXML) {
 
         JavaResult javaResult = new JavaResult();
-        readXMLRequest_V1.filterSource(new StringSource(inXML), javaResult);
+        readSOAP_V1.filterSource(new StringSource(inXML), javaResult);
         return javaResult.getBean(OrderRequest.class);
     }
 
-    public void writeSOAPResponse_V1(@From OrderResponse orderResponse, @To("urn:createOrderResponse:v1:soap") Writer outXML) {
+    public void writeSOAP_V1(@From OrderResponse orderResponse, @To("urn:createOrderResponse:v1:soap") Writer outXML) {
 
         JavaSource source = new JavaSource(orderResponse);
         source.setEventStreamRequired(false);
-        writeXMLResponse_V1.filterSource(source, new StreamResult(outXML));
+        writeSOAP_V1.filterSource(source, new StreamResult(outXML));
     }
 }
