@@ -78,7 +78,7 @@ public class TransformRegistry {
         }
 
         // Create the 'from' and 'to' PayloadSpec instances...
-        PayloadSpec fromSpec = PayloadSpec.toPayloadSpec(fromAnno.mime(), fromAnno.namespace(), params[0]);
+        PayloadSpec fromSpec = PayloadSpec.toPayloadSpec(fromAnno.value(), params[0]);
         PayloadSpec toSpec = null;
         if(params.length == 2) {
             To toAnno = getAnnotation(To.class, paramAnnos[1]);
@@ -86,7 +86,7 @@ public class TransformRegistry {
                 // TODO: Log/Throw... this is an impl error... specifies a From, but no To on the second arg...
                 return;
             }
-            toSpec = PayloadSpec.toPayloadSpec(toAnno.mime(), toAnno.namespace(), params[1]);
+            toSpec = PayloadSpec.toPayloadSpec(toAnno.value(), params[1]);
         } else {
             toSpec = PayloadSpec.toPayloadSpec(returnType);
         }

@@ -37,27 +37,21 @@ public class PayloadSpec implements Serializable {
     public static final String IN_PAYLOAD_SPEC_KEY  = PayloadSpec.class.getName() + "#IN";
     public static final String OUT_PAYLOAD_SPEC_KEY = PayloadSpec.class.getName() + "#OUT";
 
-    private String mimeType;
-    private String namespace;
+    private String value;
 
-    public PayloadSpec(String mimeType, String namespace) {
+    public PayloadSpec(String value) {
         // TODO: Add assertion checks...
 
-        this.mimeType = mimeType;
-        this.namespace = namespace;
+        this.value = value;
     }
 
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public String getNamespace() {
-        return namespace;
+    public String getValue() {
+        return value;
     }
 
     @Override
     public int hashCode() {
-        return mimeType.hashCode() + namespace.hashCode();
+        return value.hashCode();
     }
 
     @Override
@@ -70,7 +64,7 @@ public class PayloadSpec implements Serializable {
         }
         if(obj instanceof PayloadSpec) {
             PayloadSpec payloadSpec = (PayloadSpec) obj;
-            return (payloadSpec.mimeType.equals(mimeType) && payloadSpec.namespace.equals(namespace));
+            return (payloadSpec.value.equals(value));
         }
 
         return false;
@@ -78,19 +72,19 @@ public class PayloadSpec implements Serializable {
 
     @Override
     public String toString() {
-        return mimeType + "," + namespace;
+        return value;
     }
 
-    public static void setInPayloadSpec(Exchange exchange, String mime, String namespace) {
-        exchange.getContext(Scope.EXCHANGE).setProperty(IN_PAYLOAD_SPEC_KEY, new PayloadSpec(mime, namespace));
+    public static void setInPayloadSpec(Exchange exchange, String payloadSpec) {
+        exchange.getContext(Scope.EXCHANGE).setProperty(IN_PAYLOAD_SPEC_KEY, new PayloadSpec(payloadSpec));
     }
 
     public static PayloadSpec getInPayloadSpec(Exchange exchange) {
         return (PayloadSpec) exchange.getContext(Scope.EXCHANGE).getProperty(IN_PAYLOAD_SPEC_KEY);
     }
 
-    public static void setOutPayloadSpec(Exchange exchange, String mime, String namespace) {
-        exchange.getContext(Scope.EXCHANGE).setProperty(OUT_PAYLOAD_SPEC_KEY, new PayloadSpec(mime, namespace));
+    public static void setOutPayloadSpec(Exchange exchange, String payloadSpec) {
+        exchange.getContext(Scope.EXCHANGE).setProperty(OUT_PAYLOAD_SPEC_KEY, new PayloadSpec(payloadSpec));
     }
 
     public static PayloadSpec getOutPayloadSpec(Exchange exchange) {
@@ -98,19 +92,15 @@ public class PayloadSpec implements Serializable {
     }
 
     public static PayloadSpec toPayloadSpec(Class<?> type) {
-        return toPayloadSpec("", "", type);
+        return new PayloadSpec(type.getName());
     }
     
-    public static PayloadSpec toPayloadSpec(String mime, String namespace, Class<?> type) {
-        if(mime.equals("")) {
+    public static PayloadSpec toPayloadSpec(String payloadSpec, Class<?> type) {
+        if(payloadSpec.equals("")) {
             // Default mime type to Java...
-            mime = "application/java";
-        }
-        if(namespace.equals("")) {
-            // Default namespace to Java class name...
-            namespace = type.getName();
+            payloadSpec = type.getName();
         }
 
-        return new PayloadSpec(mime, namespace);
+        return new PayloadSpec(payloadSpec);
     }
 }

@@ -32,9 +32,9 @@ import java.util.Set;
  */
 public class PayloadSpecTest extends TestCase {
 
-    PayloadSpec a1 = new PayloadSpec("a", "a");
-    PayloadSpec a2 = new PayloadSpec("a", "a");
-    PayloadSpec b = new PayloadSpec("b", "b");
+    PayloadSpec a1 = new PayloadSpec("a");
+    PayloadSpec a2 = new PayloadSpec("a");
+    PayloadSpec b = new PayloadSpec("b");
 
     public void test_equals() {
         assertEquals(a1, a2);

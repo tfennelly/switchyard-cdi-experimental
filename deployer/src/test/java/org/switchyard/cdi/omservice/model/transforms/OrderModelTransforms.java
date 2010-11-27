@@ -52,14 +52,14 @@ public class OrderModelTransforms {
         writeXMLResponse_V1 = new Smooks(getClass().getResourceAsStream("createOrderResponse_v1_write.xml"));
     }
 
-    public OrderRequest readSOAPRequest_V1(@From(mime = "application/soap+xml", namespace = "urn:createOrderRequest:v1") String inXML) {
+    public OrderRequest readSOAPRequest_V1(@From("urn:createOrderRequest:v1:soap") String inXML) {
+
         JavaResult javaResult = new JavaResult();
         readXMLRequest_V1.filterSource(new StringSource(inXML), javaResult);
         return javaResult.getBean(OrderRequest.class);
     }
 
-    public void writeSOAPResponse_V1(@From OrderResponse orderResponse,
-                                     @To(mime = "application/soap+xml", namespace = "urn:createOrderResponse:v1") Writer outXML) {
+    public void writeSOAPResponse_V1(@From OrderResponse orderResponse, @To("urn:createOrderResponse:v1:soap") Writer outXML) {
 
         JavaSource source = new JavaSource(orderResponse);
         source.setEventStreamRequired(false);

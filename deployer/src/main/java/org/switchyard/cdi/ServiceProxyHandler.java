@@ -27,6 +27,7 @@ import org.switchyard.cdi.transform.From;
 import org.switchyard.cdi.transform.PayloadSpec;
 import org.switchyard.cdi.transform.TransformRegistry;
 
+import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
@@ -178,9 +179,17 @@ public class ServiceProxyHandler implements ExchangeHandler {
 
                 if(toType == Writer.class) {
                     StringWriter outputWriter = new StringWriter();
-                    transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
-                    outputWriter.flush();
-                    return outputWriter.toString();
+                    try {
+                        transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
+                        outputWriter.flush();
+                        return outputWriter.toString();
+                    } finally {
+                        try {
+                            outputWriter.close();
+                        } catch (IOException e) {
+                            // unexpected on a StringWriter
+                        }
+                    }
                 } else {
                     // TODO: Support others ??
                 }

@@ -79,8 +79,8 @@ public class WithProductsInOutTest extends AbstractCDITest {
         Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
 
         ServiceProxyHandler.setOperationName(exchange, "createOrder");
-        PayloadSpec.setInPayloadSpec(exchange, "application/soap+xml", "urn:createOrderRequest:v1");
-        PayloadSpec.setOutPayloadSpec(exchange, "application/soap+xml", "urn:createOrderResponse:v1");
+        PayloadSpec.setInPayloadSpec(exchange, "urn:createOrderRequest:v1:soap");
+        PayloadSpec.setOutPayloadSpec(exchange, "urn:createOrderResponse:v1:soap");
 
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         String request = StreamUtils.readStreamAsString(getClass().getResourceAsStream("createOrderRequest.xml"));
