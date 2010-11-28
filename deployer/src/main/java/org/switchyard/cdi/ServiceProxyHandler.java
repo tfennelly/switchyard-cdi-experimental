@@ -106,10 +106,7 @@ public class ServiceProxyHandler implements ExchangeHandler {
             List<Method> candidateMethods = getCandidateMethods(operationName);
 
             // Operation name must resolve to exactly one bean method...
-            if(candidateMethods.size() == 0) {
-                // TODO: sendFault ??? ...
-                return null;
-            } else if(candidateMethods.size() > 1) {
+            if(candidateMethods.size() != 1) {
                 // TODO: sendFault ??? ...
                 return null;
             }
