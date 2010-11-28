@@ -23,7 +23,11 @@
 package org.switchyard.cdi.transform;
 
 import javax.enterprise.context.ApplicationScoped;
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -103,6 +107,65 @@ public class TransformRegistry {
             if(anno.isAssignableFrom(annotation.getClass())) {
                 return anno.cast(annotation);
             }
+        }
+
+        return null;
+    }
+
+    public Object transformObject(Object object, PayloadSpec toSpec) {
+        PayloadSpec fromSpec = PayloadSpec.toPayloadSpec(object.getClass());
+        return transformObject(object, fromSpec, toSpec);
+    }
+
+    public Object transformObject(Object object, PayloadSpec fromSpec, PayloadSpec toSpec) {
+        if(!toSpec.equals(fromSpec)) {
+            // Not the same... transformation required...
+            TransformRegistry.TransformSpec transformSpec = get(fromSpec, toSpec);
+
+            if(transformSpec ==  null) {
+                // TODO: sendFault ... need to define a transformation ...
+                return object;
+            }
+
+            return TransformRegistry.transformPayload(object, transformSpec);
+        }
+
+        return object;
+    }
+
+    public static Object transformPayload(Object payload, TransformSpec transformSpec) {
+        Method transformMethod = transformSpec.getTransformMethod();
+        Class<?>[] transformParams = transformMethod.getParameterTypes();
+
+        try {
+            if(transformParams.length == 1) {
+                return transformMethod.invoke(transformSpec.getTransformer(), payload);
+            } else {
+                Class<?> toType = transformParams[1];
+
+                if(toType == Writer.class) {
+                    StringWriter outputWriter = new StringWriter();
+                    try {
+                        transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
+                        outputWriter.flush();
+                        return outputWriter.toString();
+                    } finally {
+                        try {
+                            outputWriter.close();
+                        } catch (IOException e) {
+                            // unexpected on a StringWriter
+                        }
+                    }
+                } else {
+                    // TODO: Support others ??
+                }
+            }
+        } catch (IllegalAccessException e) {
+            // TODO: sendFault ...
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            // TODO: sendFault ...
+            e.printStackTrace();
         }
 
         return null;

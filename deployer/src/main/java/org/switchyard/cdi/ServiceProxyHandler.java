@@ -23,13 +23,9 @@
 package org.switchyard.cdi;
 
 import org.switchyard.*;
-import org.switchyard.cdi.transform.From;
 import org.switchyard.cdi.transform.PayloadSpec;
 import org.switchyard.cdi.transform.TransformRegistry;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -76,26 +72,15 @@ public class ServiceProxyHandler implements ExchangeHandler {
         if(invocation != null) {
             try {
                 if(exchange.getPattern() == ExchangePattern.IN_OUT) {
-                    Object responsePayload = invocation.method.invoke(serviceBean, invocation.args);
+                    Object responseObject = invocation.method.invoke(serviceBean, invocation.args);
                     Message message = MessageBuilder.newInstance().buildMessage();
 
-                    PayloadSpec exchangePayloadSpec = PayloadSpec.getOutPayloadSpec(exchange);
-                    if(exchangePayloadSpec != null) {
-                        PayloadSpec responsePayloadSpec = PayloadSpec.toPayloadSpec(responsePayload.getClass());
-                        if(!exchangePayloadSpec.equals(responsePayloadSpec)) {
-                            // Outbound transformation required...
-                            TransformRegistry.TransformSpec transformSpec = transformRegistry.get(responsePayloadSpec, exchangePayloadSpec);
-
-                            if(transformSpec ==  null) {
-                                // TODO: sendFault ... need to define a transformation ...
-                                return;
-                            }
-                            
-                            responsePayload = transformPayload(responsePayload, transformSpec);                            
-                        }
+                    PayloadSpec outPayloadSpec = PayloadSpec.getOutPayloadSpec(exchange);
+                    if(outPayloadSpec != null) {
+                        responseObject = transformRegistry.transformObject(responseObject, outPayloadSpec);
                     }
 
-                    message.setContent(responsePayload);
+                    message.setContent(responseObject);
                     exchange.send(message);
                 } else {
                     invocation.method.invoke(serviceBean, invocation.args);
@@ -138,23 +123,11 @@ public class ServiceProxyHandler implements ExchangeHandler {
 
             Class<?>[] operationArgs = operationMethod.getParameterTypes();
             if(operationArgs.length == 1) {
-                PayloadSpec opperationPayloadSpec = PayloadSpec.toPayloadSpec(operationArgs[0]);
+                PayloadSpec toPayloadSpec = PayloadSpec.toPayloadSpec(operationArgs[0]);
 
-                if(exchangePayloadSpec.equals(opperationPayloadSpec)) {
-                    // No inbound transformation required...
-                    return new Invocation(operationMethod, exchange.getMessage().getContent());
-                } else {
-                    // Inbound transformation required...
-                    TransformRegistry.TransformSpec transformSpec = transformRegistry.get(exchangePayloadSpec, opperationPayloadSpec);
+                Object transformedPayload = transformRegistry.transformObject(exchange.getMessage().getContent(), exchangePayloadSpec, toPayloadSpec);
 
-                    if(transformSpec ==  null) {
-                        // TODO: sendFault ... need to define a transformation ...
-                        return null;
-                    }
-
-                    Object transformedPayload = transformPayload(exchange.getMessage().getContent(), transformSpec);
-                    return new Invocation(operationMethod, transformedPayload);
-                }
+                return new Invocation(operationMethod, transformedPayload);
             } else {
                 System.out.println("Unsupported... multi-args not yet suppoted....");
                 // TODO: sendFault ... don't support multi-args yet ...
@@ -162,44 +135,6 @@ public class ServiceProxyHandler implements ExchangeHandler {
         } else {
             System.out.println("Operation name not specified on exchange.");
             // TODO: Operation name not specified... sendFault  ...
-        }
-
-        return null;
-    }
-
-    private Object transformPayload(Object payload, TransformRegistry.TransformSpec transformSpec) {
-        Method transformMethod = transformSpec.getTransformMethod();
-        Class<?>[] transformParams = transformMethod.getParameterTypes();
-
-        try {
-            if(transformParams.length == 1) {
-                return transformMethod.invoke(transformSpec.getTransformer(), payload);
-            } else {
-                Class<?> toType = transformParams[1];
-
-                if(toType == Writer.class) {
-                    StringWriter outputWriter = new StringWriter();
-                    try {
-                        transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
-                        outputWriter.flush();
-                        return outputWriter.toString();
-                    } finally {
-                        try {
-                            outputWriter.close();
-                        } catch (IOException e) {
-                            // unexpected on a StringWriter
-                        }
-                    }
-                } else {
-                    // TODO: Support others ??
-                }
-            }
-        } catch (IllegalAccessException e) {
-            // TODO: sendFault ...
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            // TODO: sendFault ... 
-            e.printStackTrace();
         }
 
         return null;
