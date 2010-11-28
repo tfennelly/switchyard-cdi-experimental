@@ -41,13 +41,19 @@ public class ServiceProxyHandler implements ExchangeHandler {
     private Object serviceBean;
     private Class<? extends Object> serviceClass;
     private TransformRegistry transformRegistry;
-    private Method[] serviceMethods;
+    private List<Method> publicServiceMethods = new ArrayList<Method>();
 
     public ServiceProxyHandler(Object serviceBean, TransformRegistry transformRegistry) {
         this.serviceBean = serviceBean;
         this.transformRegistry = transformRegistry;
         serviceClass = serviceBean.getClass();
-        serviceMethods = serviceClass.getMethods();
+
+        Method[] serviceMethods = serviceClass.getMethods();
+        for(Method serviceMethod : serviceMethods) {
+            if(serviceMethod.getDeclaringClass() != Object.class) {
+                publicServiceMethods.add(serviceMethod);
+            }
+        }
     }
 
     public void handleMessage(Exchange exchange) throws HandlerException {
@@ -140,10 +146,8 @@ public class ServiceProxyHandler implements ExchangeHandler {
     private List<Method> getCandidateMethods(String name) {
         List<Method> candidateMethods = new ArrayList<Method>();
 
-        for(Method serviceMethod : serviceMethods) {
-            if(serviceMethod.getDeclaringClass() == Object.class) {
-                continue;
-            } else if(serviceMethod.getName().equals(name)) {
+        for(Method serviceMethod : publicServiceMethods) {
+            if(serviceMethod.getName().equals(name)) {
                 candidateMethods.add(serviceMethod);
             }
         }
