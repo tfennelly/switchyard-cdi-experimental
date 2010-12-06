@@ -39,21 +39,6 @@ public class BeanInvocationTransformFactory implements TransformFactory {
     private TransformRegistry transformRegistry;
     private BeanServiceMetadata beanServiceMetadata;
 
-    // TODO:  There's an issue here and we're not addressing it yet....
-    // I think the transformation requirements need to be handled on a per handler chain basis.
-    //
-    // I think:
-    //
-    // 1.  The send/consumer side needs to transform (to the provider type) before sending because it
-    //     knows about its own format and the format supported by the provider e.g. Java to "XMLA".
-    //
-    // 2.  The receive/provider side needs to transform from it's supported interface type,
-    //     to its internal/canonical/service representation of this data e.g. "XMLA" to Java.
-    //
-    // And the above is just talking about the IN aspects of an exchange.  You'd have a similar
-    // scenario for the OUT leg of an IN_OUT exchange.
-    //
-
     public BeanInvocationTransformFactory(BeanServiceMetadata beanServiceMetadata, TransformRegistry transformRegistry) {
         this.beanServiceMetadata = beanServiceMetadata;
         this.transformRegistry = transformRegistry;
