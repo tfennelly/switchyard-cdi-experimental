@@ -66,7 +66,7 @@ public class PayloadSpecTransform implements Transform {
         return transformMethod;
     }
 
-    public Object transform(Object payload) {
+    public Object execute(Object payload) {
         Method transformMethod = getTransformMethod();
         Class<?>[] transformParams = transformMethod.getParameterTypes();
 

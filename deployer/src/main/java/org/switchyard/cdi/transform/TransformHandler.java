@@ -33,18 +33,18 @@ import org.switchyard.cdi.transform.factory.TransformFactory;
  */
 public class TransformHandler implements ExchangeHandler {
 
-    private TransformFactory transformSpecFactory;
+    private TransformFactory transformFactory;
 
-    public TransformHandler(TransformFactory transformSpecFactory) {
-        this.transformSpecFactory = transformSpecFactory;
+    public TransformHandler(TransformFactory transformFactory) {
+        this.transformFactory = transformFactory;
     }
 
     public void handleMessage(Exchange exchange) throws HandlerException {
         if(exchange != null) {
-            Transform transform = transformSpecFactory.getTransform(exchange);
+            Transform transform = transformFactory.getTransform(exchange);
             if(transform != null) {
                 Message message = exchange.getMessage();
-                Object newPayload = transform.transform(message.getContent());
+                Object newPayload = transform.execute(message.getContent());
                 message.setContent(newPayload);
             }
         }

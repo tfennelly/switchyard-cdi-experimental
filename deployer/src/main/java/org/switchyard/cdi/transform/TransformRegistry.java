@@ -123,7 +123,7 @@ public class TransformRegistry {
                 return object;
             }
 
-            return transform.transform(object);
+            return transform.execute(object);
         }
 
         return object;

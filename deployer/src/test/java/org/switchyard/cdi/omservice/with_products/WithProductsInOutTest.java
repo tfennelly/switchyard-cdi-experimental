@@ -96,7 +96,7 @@ public class WithProductsInOutTest extends AbstractCDITest {
             OrderModelTransforms orderModelXForm = new OrderModelTransforms();
             public Transform getTransform(Exchange exchange) {
                 return new Transform() {
-                    public Object transform(Object payload) {
+                    public Object execute(Object payload) {
                         if(payload instanceof OrderResponse) {
                             // TODO: This transform is not happening in the correct place.
                             // Shouldn't be handling Service defined Java Objects on the client side.. too tight!!
