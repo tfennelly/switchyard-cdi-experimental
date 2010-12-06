@@ -20,13 +20,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.transform.specfactory;
+package org.switchyard.cdi.transform.factory;
 
 import org.switchyard.Exchange;
 import org.switchyard.cdi.BeanServiceMetadata;
 import org.switchyard.cdi.transform.PayloadSpec;
+import org.switchyard.cdi.transform.Transform;
 import org.switchyard.cdi.transform.TransformRegistry;
-import org.switchyard.cdi.transform.TransformSpec;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -34,7 +34,7 @@ import java.util.List;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public class BeanInvocationTransformSpecFactory implements TransformSpecFactory {
+public class BeanInvocationTransformFactory implements TransformFactory {
 
     private TransformRegistry transformRegistry;
     private BeanServiceMetadata beanServiceMetadata;
@@ -54,12 +54,12 @@ public class BeanInvocationTransformSpecFactory implements TransformSpecFactory 
     // scenario for the OUT leg of an IN_OUT exchange.
     //
 
-    public BeanInvocationTransformSpecFactory(BeanServiceMetadata beanServiceMetadata, TransformRegistry transformRegistry) {
+    public BeanInvocationTransformFactory(BeanServiceMetadata beanServiceMetadata, TransformRegistry transformRegistry) {
         this.beanServiceMetadata = beanServiceMetadata;
         this.transformRegistry = transformRegistry;
     }
 
-    public TransformSpec getTransformSpec(Exchange exchange) {
+    public Transform getTransform(Exchange exchange) {
         String operationName = BeanServiceMetadata.getOperationName(exchange);
 
         if(operationName != null) {

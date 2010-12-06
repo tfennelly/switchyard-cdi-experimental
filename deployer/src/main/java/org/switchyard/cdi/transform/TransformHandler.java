@@ -26,25 +26,25 @@ import org.switchyard.Exchange;
 import org.switchyard.ExchangeHandler;
 import org.switchyard.HandlerException;
 import org.switchyard.Message;
-import org.switchyard.cdi.transform.specfactory.TransformSpecFactory;
+import org.switchyard.cdi.transform.factory.TransformFactory;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
 public class TransformHandler implements ExchangeHandler {
 
-    private TransformSpecFactory transformSpecFactory;
+    private TransformFactory transformSpecFactory;
 
-    public TransformHandler(TransformSpecFactory transformSpecFactory) {
+    public TransformHandler(TransformFactory transformSpecFactory) {
         this.transformSpecFactory = transformSpecFactory;
     }
 
     public void handleMessage(Exchange exchange) throws HandlerException {
         if(exchange != null) {
-            TransformSpec transformSpec = transformSpecFactory.getTransformSpec(exchange);
-            if(transformSpec != null) {
+            Transform transform = transformSpecFactory.getTransform(exchange);
+            if(transform != null) {
                 Message message = exchange.getMessage();
-                Object newPayload = transformSpec.transform(message.getContent());
+                Object newPayload = transform.transform(message.getContent());
                 message.setContent(newPayload);
             }
         }

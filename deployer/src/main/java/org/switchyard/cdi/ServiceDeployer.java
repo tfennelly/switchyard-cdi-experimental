@@ -24,8 +24,8 @@ package org.switchyard.cdi;
 
 import org.switchyard.cdi.transform.TransformHandler;
 import org.switchyard.cdi.transform.TransformRegistry;
-import org.switchyard.cdi.transform.Transformer;
-import org.switchyard.cdi.transform.specfactory.BeanInvocationTransformSpecFactory;
+import org.switchyard.cdi.transform.TransformSpecifier;
+import org.switchyard.cdi.transform.factory.BeanInvocationTransformFactory;
 import org.switchyard.internal.DefaultHandlerChain;
 import org.switchyard.internal.ServiceDomains;
 
@@ -95,7 +95,6 @@ public class ServiceDeployer implements Extension {
     }
 
     private void registerESBServiceProxyHandler(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, TransformRegistry transformRegistry) {
-        BeanServiceMetadata serviceMetadata = new BeanServiceMetadata(serviceType);
         QName serviceQName = toServiceQName(serviceAnnotation, serviceType.getSimpleName());
         CreationalContext creationalContext = beanManager.createCreationalContext(serviceBean);
 
@@ -104,7 +103,9 @@ public class ServiceDeployer implements Extension {
 
         // TODO: Should the TransformHandler be one of the system handlers?
         DefaultHandlerChain handlerChain = new DefaultHandlerChain();
-        handlerChain.addLast("transform", new TransformHandler(new BeanInvocationTransformSpecFactory(serviceMetadata, transformRegistry)));
+        BeanServiceMetadata serviceMetadata = new BeanServiceMetadata(serviceType);
+
+        handlerChain.addLast("transform", new TransformHandler(new BeanInvocationTransformFactory(serviceMetadata, transformRegistry)));
         handlerChain.addLast("serviceProxy", new ServiceProxyHandler(beanRef, serviceMetadata));
         
         ServiceDomains.getDomain().registerService(serviceQName, handlerChain);
@@ -141,7 +142,7 @@ public class ServiceDeployer implements Extension {
     }
 
     private boolean isTransformerBean(Bean<?> bean) {
-        return bean.getBeanClass().isAnnotationPresent(Transformer.class);
+        return bean.getBeanClass().isAnnotationPresent(TransformSpecifier.class);
     }
 
     private QName toServiceQName(Service serviceAnnotation, String defaultName) {

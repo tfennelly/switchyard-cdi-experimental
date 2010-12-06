@@ -34,9 +34,9 @@ import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
 import org.switchyard.cdi.omservice.model.transforms.OrderModelTransforms;
 import org.switchyard.cdi.transform.PayloadSpec;
+import org.switchyard.cdi.transform.Transform;
 import org.switchyard.cdi.transform.TransformHandler;
-import org.switchyard.cdi.transform.TransformSpec;
-import org.switchyard.cdi.transform.specfactory.TransformSpecFactory;
+import org.switchyard.cdi.transform.factory.TransformFactory;
 import org.switchyard.internal.DefaultHandlerChain;
 import org.switchyard.internal.ServiceDomains;
 import org.xml.sax.SAXException;
@@ -59,8 +59,8 @@ public class WithProductsInOutTest extends AbstractCDITest {
         // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
         DefaultHandlerChain handlerChain = new DefaultHandlerChain();
-        handlerChain.addLast("transform", new TransformHandler(new TransformSpecFactory() {
-            public TransformSpec getTransformSpec(Exchange exchange) {
+        handlerChain.addLast("transform", new TransformHandler(new TransformFactory() {
+            public Transform getTransform(Exchange exchange) {
                 // No transform...
                 return null;
             }
@@ -92,11 +92,10 @@ public class WithProductsInOutTest extends AbstractCDITest {
         // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
         DefaultHandlerChain handlerChain = new DefaultHandlerChain();
-        handlerChain.addLast("transform", new TransformHandler(new TransformSpecFactory() {
+        handlerChain.addLast("transform", new TransformHandler(new TransformFactory() {
             OrderModelTransforms orderModelXForm = new OrderModelTransforms();
-            public TransformSpec getTransformSpec(Exchange exchange) {
-                return new TransformSpec() {
-                    @Override
+            public Transform getTransform(Exchange exchange) {
+                return new Transform() {
                     public Object transform(Object payload) {
                         if(payload instanceof OrderResponse) {
                             // TODO: This transform is not happening in the correct place.

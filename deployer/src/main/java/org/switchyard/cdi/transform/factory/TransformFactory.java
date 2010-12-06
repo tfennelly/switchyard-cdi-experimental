@@ -20,21 +20,21 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.switchyard.cdi.transform.specfactory;
+package org.switchyard.cdi.transform.factory;
 
 import org.switchyard.Exchange;
-import org.switchyard.cdi.transform.TransformSpec;
+import org.switchyard.cdi.transform.Transform;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public interface TransformSpecFactory {
+public interface TransformFactory {
 
     /**
-     * Get the transformation specification for the supplied Exchange payload.
+     * Get the transformation for the supplied Exchange payload.
      * @param exchange The Exchange instance.
      * @return The transformation specification for the supplied Exchange payload,
      * or null if a transformation is not required.
      */
-    TransformSpec getTransformSpec(Exchange exchange);
+    Transform getTransform(Exchange exchange);
 }

@@ -34,7 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @ApplicationScoped
 public class TransformRegistry {
 
-    private List<TransformSpec> transforms = new CopyOnWriteArrayList<TransformSpec>();
+    private List<PayloadSpecTransform> transforms = new CopyOnWriteArrayList<PayloadSpecTransform>();
 
     public void add(Object transformer) {
         for(Method method : transformer.getClass().getMethods()) {
@@ -42,8 +42,8 @@ public class TransformRegistry {
         }
     }
 
-    public TransformSpec get(PayloadSpec from, PayloadSpec to) {
-        for(TransformSpec transform : transforms) {
+    public Transform get(PayloadSpec from, PayloadSpec to) {
+        for(PayloadSpecTransform transform : transforms) {
             if(transform.getFrom().equals(from) && transform.getTo().equals(to)) {
                 return transform;
             }
@@ -91,11 +91,11 @@ public class TransformRegistry {
             toSpec = PayloadSpec.toPayloadSpec(returnType);
         }
 
-        // Add a TransformSpec for the transform method...
+        // Add a Transform for the transform method...
         if(get(fromSpec, toSpec) != null) {
             throw new IllegalArgumentException("Duplicate transform specification for '" + fromSpec + "' to '" + toSpec + "'.");
         }
-        transforms.add(new TransformSpec(fromSpec, toSpec, transformer, transformMethod));
+        transforms.add(new PayloadSpecTransform(fromSpec, toSpec, transformer, transformMethod));
     }
 
     private <T extends Annotation> T getAnnotation(Class<T> anno, Annotation[] paramAnno) {
@@ -116,14 +116,14 @@ public class TransformRegistry {
     public Object transformObject(Object object, PayloadSpec fromSpec, PayloadSpec toSpec) {
         if(!toSpec.equals(fromSpec)) {
             // Not the same... transformation required...
-            TransformSpec transformSpec = get(fromSpec, toSpec);
+            Transform transform = get(fromSpec, toSpec);
 
-            if(transformSpec ==  null) {
+            if(transform ==  null) {
                 // TODO: sendFault ... need to define a transformation ...
                 return object;
             }
 
-            return transformSpec.transform(object);
+            return transform.transform(object);
         }
 
         return object;

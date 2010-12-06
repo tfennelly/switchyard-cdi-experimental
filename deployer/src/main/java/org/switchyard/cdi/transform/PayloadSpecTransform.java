@@ -31,17 +31,17 @@ import java.lang.reflect.Method;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-public class TransformSpec {
+public class PayloadSpecTransform implements Transform {
 
     private PayloadSpec from;
     private PayloadSpec to;
     private Object transformer;
     private Method transformMethod;
 
-    protected TransformSpec() {
+    protected PayloadSpecTransform() {
     }
 
-    public TransformSpec(PayloadSpec from, PayloadSpec to, Object transformer, Method transformMethod) {
+    public PayloadSpecTransform(PayloadSpec from, PayloadSpec to, Object transformer, Method transformMethod) {
         // TODO: Add assertion checks...
 
         this.from = from;

@@ -35,5 +35,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({ TYPE })
 @Retention(RUNTIME)
 @Documented
-public @interface Transformer {
+public @interface TransformSpecifier {
 }

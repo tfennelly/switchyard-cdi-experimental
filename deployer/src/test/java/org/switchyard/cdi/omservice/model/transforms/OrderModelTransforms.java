@@ -33,7 +33,7 @@ import org.switchyard.cdi.transform.To;
 
 import java.io.*;
 
-import org.switchyard.cdi.transform.Transformer;
+import org.switchyard.cdi.transform.TransformSpecifier;
 import org.xml.sax.SAXException;
 
 import javax.xml.transform.stream.StreamResult;
@@ -41,7 +41,7 @@ import javax.xml.transform.stream.StreamResult;
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
  */
-@Transformer
+@TransformSpecifier
 public class OrderModelTransforms {
 
     private Smooks readXML_V1;
