@@ -22,8 +22,11 @@
 
 package org.switchyard.cdi;
 
+import org.switchyard.cdi.transform.TransformHandler;
 import org.switchyard.cdi.transform.TransformRegistry;
 import org.switchyard.cdi.transform.Transformer;
+import org.switchyard.cdi.transform.specfactory.BeanInvocationTransformSpecFactory;
+import org.switchyard.internal.DefaultHandlerChain;
 import org.switchyard.internal.ServiceDomains;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -36,7 +39,6 @@ import javax.xml.namespace.QName;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -93,12 +95,19 @@ public class ServiceDeployer implements Extension {
     }
 
     private void registerESBServiceProxyHandler(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, TransformRegistry transformRegistry) {
+        BeanServiceMetadata serviceMetadata = new BeanServiceMetadata(serviceType);
         QName serviceQName = toServiceQName(serviceAnnotation, serviceType.getSimpleName());
         CreationalContext creationalContext = beanManager.createCreationalContext(serviceBean);
 
         // Register the Service in the ESB domain...
         Object beanRef = beanManager.getReference(serviceBean, Object.class, creationalContext);
-        ServiceDomains.getDomain().registerService(serviceQName, new ServiceProxyHandler(beanRef, transformRegistry));
+
+        // TODO: Should the TransformHandler be one of the system handlers?
+        DefaultHandlerChain handlerChain = new DefaultHandlerChain();
+        handlerChain.addLast("transform", new TransformHandler(new BeanInvocationTransformSpecFactory(serviceMetadata, transformRegistry)));
+        handlerChain.addLast("serviceProxy", new ServiceProxyHandler(beanRef, serviceMetadata));
+        
+        ServiceDomains.getDomain().registerService(serviceQName, handlerChain);
     }
 
     private void addInjectableClientProxyBean(Bean<?> serviceBean, Class<?> serviceType, Service serviceAnnotation, BeanManager beanManager, AfterBeanDiscovery abd) {

@@ -36,24 +36,12 @@ import java.util.List;
  */
 public class ServiceProxyHandler implements ExchangeHandler {
 
-    private static final String OPERATION_NAME = "OPERATION_NAME";
-
     private Object serviceBean;
-    private Class<? extends Object> serviceClass;
-    private TransformRegistry transformRegistry;
-    private List<Method> publicServiceMethods = new ArrayList<Method>();
+    private BeanServiceMetadata serviceMetadata;
 
-    public ServiceProxyHandler(Object serviceBean, TransformRegistry transformRegistry) {
+    public ServiceProxyHandler(Object serviceBean, BeanServiceMetadata serviceMetadata) {
         this.serviceBean = serviceBean;
-        this.transformRegistry = transformRegistry;
-        serviceClass = serviceBean.getClass();
-
-        Method[] serviceMethods = serviceClass.getMethods();
-        for(Method serviceMethod : serviceMethods) {
-            if(serviceMethod.getDeclaringClass() != Object.class) {
-                publicServiceMethods.add(serviceMethod);
-            }
-        }
+        this.serviceMetadata = serviceMetadata;
     }
 
     public void handleMessage(Exchange exchange) throws HandlerException {
@@ -64,32 +52,19 @@ public class ServiceProxyHandler implements ExchangeHandler {
         handle(exchange);
     }
 
-    public static void setOperationName(Exchange exchange, String name) {
-        exchange.getContext(Scope.EXCHANGE).setProperty(OPERATION_NAME, name);
-    }
-
-    private String getOperationName(Exchange exchange) {
-        return (String) exchange.getContext(Scope.EXCHANGE).getProperty(OPERATION_NAME);
-    }
-
     private void handle(Exchange exchange) {
-        Invocation invocation = getInvocation(exchange);
+        BeanServiceMetadata.Invocation invocation = serviceMetadata.getInvocation(exchange);
 
         if(invocation != null) {
             try {
                 if(exchange.getPattern() == ExchangePattern.IN_OUT) {
-                    Object responseObject = invocation.method.invoke(serviceBean, invocation.args);
+                    Object responseObject = invocation.getMethod().invoke(serviceBean, invocation.getArgs());
                     Message message = MessageBuilder.newInstance().buildMessage();
-
-                    PayloadSpec outPayloadSpec = PayloadSpec.getOutPayloadSpec(exchange);
-                    if(outPayloadSpec != null) {
-                        responseObject = transformRegistry.transformObject(responseObject, outPayloadSpec);
-                    }
 
                     message.setContent(responseObject);
                     exchange.send(message);
                 } else {
-                    invocation.method.invoke(serviceBean, invocation.args);
+                    invocation.getMethod().invoke(serviceBean, invocation.getArgs());
                 }
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
@@ -103,74 +78,4 @@ public class ServiceProxyHandler implements ExchangeHandler {
             // TODO: sendFault...
         }
     }
-
-    private Invocation getInvocation(Exchange exchange) {
-
-        String operationName = getOperationName(exchange);
-
-        if(operationName != null) {
-            List<Method> candidateMethods = getCandidateMethods(operationName);
-
-            // Operation name must resolve to exactly one bean method...
-            if(candidateMethods.size() != 1) {
-                // TODO: sendFault ??? ...
-                return null;
-            }
-
-            Method operationMethod = candidateMethods.get(0);
-            PayloadSpec exchangePayloadSpec = PayloadSpec.getInPayloadSpec(exchange);
-
-            if(exchangePayloadSpec == null) {
-                return new Invocation(operationMethod, exchange.getMessage().getContent());
-            }
-
-            Class<?>[] operationArgs = operationMethod.getParameterTypes();
-            if(operationArgs.length == 1) {
-                PayloadSpec toPayloadSpec = PayloadSpec.toPayloadSpec(operationArgs[0]);
-
-                Object transformedPayload = transformRegistry.transformObject(exchange.getMessage().getContent(), exchangePayloadSpec, toPayloadSpec);
-
-                return new Invocation(operationMethod, transformedPayload);
-            } else {
-                System.out.println("Unsupported... multi-args not yet suppoted....");
-                // TODO: sendFault ... don't support multi-args yet ...
-            }
-        } else {
-            System.out.println("Operation name not specified on exchange.");
-            // TODO: Operation name not specified... sendFault  ...
-        }
-
-        return null;
-    }
-
-    private List<Method> getCandidateMethods(String name) {
-        List<Method> candidateMethods = new ArrayList<Method>();
-
-        for(Method serviceMethod : publicServiceMethods) {
-            if(serviceMethod.getName().equals(name)) {
-                candidateMethods.add(serviceMethod);
-            }
-        }
-
-        return candidateMethods;
-    }
-
-    private static class Invocation {
-        private Method method;
-        private Object[] args;
-
-        private Invocation(Method method, Object arg) {
-            this.method = method;
-            this.args = castArg(arg);
-        }
-
-        private static Object[] castArg(Object arg) {
-            if(arg.getClass().isArray()) {
-                return (Object[].class).cast(arg);
-            } else {
-                return new Object[] {arg};
-            }
-        }
-    }
-
 }

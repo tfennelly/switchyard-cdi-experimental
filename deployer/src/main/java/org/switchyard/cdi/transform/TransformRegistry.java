@@ -23,11 +23,7 @@
 package org.switchyard.cdi.transform;
 
 import javax.enterprise.context.ApplicationScoped;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -48,7 +44,7 @@ public class TransformRegistry {
 
     public TransformSpec get(PayloadSpec from, PayloadSpec to) {
         for(TransformSpec transform : transforms) {
-            if(transform.from.equals(from) && transform.to.equals(to)) {
+            if(transform.getFrom().equals(from) && transform.getTo().equals(to)) {
                 return transform;
             }
         }
@@ -120,90 +116,16 @@ public class TransformRegistry {
     public Object transformObject(Object object, PayloadSpec fromSpec, PayloadSpec toSpec) {
         if(!toSpec.equals(fromSpec)) {
             // Not the same... transformation required...
-            TransformRegistry.TransformSpec transformSpec = get(fromSpec, toSpec);
+            TransformSpec transformSpec = get(fromSpec, toSpec);
 
             if(transformSpec ==  null) {
                 // TODO: sendFault ... need to define a transformation ...
                 return object;
             }
 
-            return TransformRegistry.transformPayload(object, transformSpec);
+            return transformSpec.transform(object);
         }
 
         return object;
-    }
-
-    public static Object transformPayload(Object payload, TransformSpec transformSpec) {
-        Method transformMethod = transformSpec.getTransformMethod();
-        Class<?>[] transformParams = transformMethod.getParameterTypes();
-
-        try {
-            if(transformParams.length == 1) {
-                return transformMethod.invoke(transformSpec.getTransformer(), payload);
-            } else {
-                Class<?> toType = transformParams[1];
-
-                if(toType == Writer.class) {
-                    StringWriter outputWriter = new StringWriter();
-                    try {
-                        transformMethod.invoke(transformSpec.getTransformer(), payload, outputWriter);
-                        outputWriter.flush();
-                        return outputWriter.toString();
-                    } finally {
-                        try {
-                            outputWriter.close();
-                        } catch (IOException e) {
-                            // unexpected on a StringWriter
-                        }
-                    }
-                } else {
-                    // TODO: Support others ??
-                }
-            }
-        } catch (IllegalAccessException e) {
-            // TODO: sendFault ...
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            // TODO: sendFault ...
-            e.printStackTrace();
-        }
-
-        return null;
-    }
-
-    /**
-     * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
-     */
-    public static class TransformSpec {
-
-        private PayloadSpec from;
-        private PayloadSpec to;
-        private Object transformer;
-        private Method transformMethod;
-
-        public TransformSpec(PayloadSpec from, PayloadSpec to, Object transformer, Method transformMethod) {
-            // TODO: Add assertion checks...
-
-            this.from = from;
-            this.to = to;
-            this.transformer = transformer;
-            this.transformMethod = transformMethod;
-        }
-
-        public PayloadSpec getFrom() {
-            return from;
-        }
-
-        public PayloadSpec getTo() {
-            return to;
-        }
-
-        public Object getTransformer() {
-            return transformer;
-        }
-
-        public Method getTransformMethod() {
-            return transformMethod;
-        }
     }
 }

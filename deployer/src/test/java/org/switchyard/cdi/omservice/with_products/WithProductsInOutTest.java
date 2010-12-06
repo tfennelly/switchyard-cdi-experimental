@@ -29,10 +29,15 @@ import org.junit.Test;
 import org.milyn.io.StreamUtils;
 import org.switchyard.*;
 import org.switchyard.cdi.AbstractCDITest;
-import org.switchyard.cdi.ServiceProxyHandler;
+import org.switchyard.cdi.BeanServiceMetadata;
 import org.switchyard.cdi.omservice.model.OrderRequest;
 import org.switchyard.cdi.omservice.model.OrderResponse;
+import org.switchyard.cdi.omservice.model.transforms.OrderModelTransforms;
 import org.switchyard.cdi.transform.PayloadSpec;
+import org.switchyard.cdi.transform.TransformHandler;
+import org.switchyard.cdi.transform.TransformSpec;
+import org.switchyard.cdi.transform.specfactory.TransformSpecFactory;
+import org.switchyard.internal.DefaultHandlerChain;
 import org.switchyard.internal.ServiceDomains;
 import org.xml.sax.SAXException;
 
@@ -40,6 +45,7 @@ import javax.xml.namespace.QName;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.io.StringWriter;
 
 /**
  * @author <a href="mailto:tom.fennelly@gmail.com">tom.fennelly@gmail.com</a>
@@ -52,9 +58,18 @@ public class WithProductsInOutTest extends AbstractCDITest {
 
         // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
-        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
+        DefaultHandlerChain handlerChain = new DefaultHandlerChain();
+        handlerChain.addLast("transform", new TransformHandler(new TransformSpecFactory() {
+            public TransformSpec getTransformSpec(Exchange exchange) {
+                // No transform...
+                return null;
+            }
+        }));
+        handlerChain.addLast("consumer", responseConsumer);
 
-        ServiceProxyHandler.setOperationName(exchange, "createOrder");
+        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, handlerChain);
+
+        BeanServiceMetadata.setOperationName(exchange, "createOrder");
         
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         inMessage.setContent(new OrderRequest("D123", "ABCD"));
@@ -76,11 +91,32 @@ public class WithProductsInOutTest extends AbstractCDITest {
 
         // Consume the OM model...
         MockHandler responseConsumer = new MockHandler();
-        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, responseConsumer);
+        DefaultHandlerChain handlerChain = new DefaultHandlerChain();
+        handlerChain.addLast("transform", new TransformHandler(new TransformSpecFactory() {
+            OrderModelTransforms orderModelXForm = new OrderModelTransforms();
+            public TransformSpec getTransformSpec(Exchange exchange) {
+                return new TransformSpec() {
+                    @Override
+                    public Object transform(Object payload) {
+                        if(payload instanceof OrderResponse) {
+                            // TODO: This transform is not happening in the correct place.
+                            // Shouldn't be handling Service defined Java Objects on the client side.. too tight!!
+                            StringWriter writer = new StringWriter();
+                            orderModelXForm.writeXML_V1((OrderResponse) payload, writer);
+                            return writer.toString();
+                        } else {
+                            return payload;
+                        }
+                    }
+                };
+            }
+        }));
+        handlerChain.addLast("consumer", responseConsumer);
+        Exchange exchange = domain.createExchange(new QName("WithProductsOrderManagementService"), ExchangePattern.IN_OUT, handlerChain);
 
-        ServiceProxyHandler.setOperationName(exchange, "createOrder");
-        PayloadSpec.setInPayloadSpec(exchange, "urn:createOrderRequest:v1:soap");
-        PayloadSpec.setOutPayloadSpec(exchange, "urn:createOrderResponse:v1:soap");
+        BeanServiceMetadata.setOperationName(exchange, "createOrder");
+        PayloadSpec.setInPayloadSpec(exchange, "urn:createOrderRequest:v1:xml");
+        PayloadSpec.setOutPayloadSpec(exchange, "urn:createOrderResponse:v1:xml");
 
         Message inMessage = MessageBuilder.newInstance().buildMessage();
         String request = StreamUtils.readStreamAsString(getClass().getResourceAsStream("createOrderRequest.xml"));

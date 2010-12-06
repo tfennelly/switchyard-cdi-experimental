@@ -162,7 +162,7 @@ public class ClientProxyBean implements Bean {
         }
 
         private Message prepareSend(Exchange exchange, Object[] args, Method method) {
-            ServiceProxyHandler.setOperationName(exchange, method.getName());
+            BeanServiceMetadata.setOperationName(exchange, method.getName());
             Message inMessage = MessageBuilder.newInstance().buildMessage();
             inMessage.setContent(args);
             return inMessage;

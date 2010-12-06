@@ -1,11 +1,4 @@
-<soap11:Envelope xmlns="urn:createOrderRequest:v1"
-                 xmlns:soap11="http://schemas.xmlsoap.org/soap/envelope/">
-
-    <soap11:Body>
-        <createOrder>
-            <orderId>D123</orderId>
-            <productId>ABCD</productId>
-        </createOrder>
-    </soap11:Body>
-    
-</soap11:Envelope>
+<createOrder xmlns="urn:createOrderRequest:v1">
+    <orderId>D123</orderId>
+    <productId>ABCD</productId>
+</createOrder>
